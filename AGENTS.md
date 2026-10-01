@@ -15,8 +15,8 @@ These instructions apply to the entire repository. Read them before planning or 
 
 - `progress/` is the agent-maintained area for plans, execution notes, and completion tracking.
 - For each epic, maintain both of these plans:
-  - `progress/epics/<epic>/backend/plan.md`
-  - `progress/epics/<epic>/front_end/plan.md`
+  - `progress/<epic>/backend/plan.md`
+  - `progress/<epic>/front_end/plan.md`
 - Use the existing `front_end` spelling. Backend and frontend are sibling directories; do not nest one under the other.
 - Reuse existing epic directories and plans. Preserve completed work and useful history instead of replacing them on each loop.
 - If an epic requires no work in one area, keep its plan and state why that area is not applicable.
