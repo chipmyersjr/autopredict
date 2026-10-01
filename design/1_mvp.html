@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>College Football Betting Simulator — MVP Design Proposal</title>
+<style>
+:root{--text:#1f2937;--muted:#6b7280;--line:#e5e7eb;--bg:#f7f8fa;--card:#fff;--accent:#2563eb}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:var(--text);background:var(--bg);line-height:1.55}
+.container{max-width:980px;margin:auto;padding:48px 28px 72px}
+header{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:36px;margin-bottom:28px}
+h1{margin:0 0 8px;font-size:32px;line-height:1.2}
+h2{margin-top:38px;padding-bottom:8px;border-bottom:1px solid var(--line);font-size:23px}
+h3{margin-top:24px;font-size:18px}
+p{margin:10px 0}
+.subtitle{color:var(--muted);font-size:17px}
+.callout{background:#eff6ff;border-left:4px solid var(--accent);padding:16px 18px;border-radius:8px;margin:18px 0}
+.goal{font-size:18px;font-weight:650;text-align:center;padding:18px;background:#fff;border:1px solid var(--line);border-radius:10px;margin:20px 0}
+ul{padding-left:24px} li{margin:7px 0}
+code{background:#f1f5f9;padding:2px 5px;border-radius:4px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
+pre{background:#111827;color:#f9fafb;padding:18px;border-radius:10px;overflow:auto;font-size:13px;line-height:1.5}
+table{width:100%;border-collapse:collapse;background:var(--card);margin:14px 0 22px}
+th,td{text-align:left;padding:11px 12px;border:1px solid var(--line);vertical-align:top}
+th{background:#f3f4f6}
+.phase{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:18px 20px;margin:14px 0}
+.phase strong{color:var(--accent)}
+footer{color:var(--muted);font-size:14px;margin-top:40px;border-top:1px solid var(--line);padding-top:18px}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+<h1>College Football Betting Simulator</h1>
+<div class="subtitle">MVP Design Proposal &amp; Agentic Development Plan</div>
+<div class="callout"><strong>Purpose:</strong> Build a small, complete vertical slice first: college football games and spreads → random strategy → theoretical bets → settlement → profit/loss.</div>
+</header>
+
+<h2>1. Product Vision</h2>
+<h3>MVP — College Football Betting Simulator</h3>
+<p>A web-based platform that lets a <strong>User</strong> run betting strategies against college-football spread markets using a <strong>Dry Run adapter</strong>.</p>
+<ul>
+<li><strong>Games:</strong> View upcoming college football games and their current spreads.</li>
+<li><strong>Markets:</strong> Represent different types of bets in a flexible way, starting with spread.</li>
+<li><strong>Strategies:</strong> Start with one baseline strategy: <strong>Random Strategy</strong>, which randomly selects available bets.</li>
+<li><strong>Runs:</strong> A User starts a Run against a set of games using a selected Strategy.</li>
+<li><strong>Dry Run:</strong> Records theoretical bets, settles them when games finish, and calculates bankroll, profit/loss, ROI, and other results.</li>
+<li><strong>Admin Dashboard:</strong> Manage games, strategies, runs, and bets; view spreads, active runs, bet history, and performance visualizations.</li>
+</ul>
+<div class="goal">MVP Goal: <strong>Games → Spreads → Strategy → Bets → Results → P&amp;L</strong></div>
+
+<h3>Future State — AI Strategy &amp; Experimentation Platform</h3>
+<p>The simulator evolves into an <strong>AI-native platform for developing, evaluating, and continuously improving betting strategies.</strong></p>
+<div class="goal"><strong>Data → Prediction → Strategy → Bets → Results → Evaluation → Learning</strong></div>
+<ul>
+<li>More markets and sports: totals, moneylines, player props, NFL, NBA, etc.</li>
+<li>Advanced strategies: statistical models → ML → LLM-powered strategies → reinforcement learning.</li>
+<li>Richer real-time and historical data.</li>
+<li>Strategy experimentation, backtesting, comparison, and versioning.</li>
+<li>AI agents that analyze markets, develop strategies, run experiments, and propose improvements.</li>
+<li>Reinforcement learning with a defined reward function, using Random Strategy as the baseline to beat.</li>
+<li>Eventually, coding agents can modify the system/strategies, run evaluations, and receive rewards based on measurable improvement.</li>
+<li>A future Kalshi execution adapter can be added without making Kalshi part of the MVP domain model.</li>
+<li>Advanced analytics: probability calibration, expected value, drawdown, risk, strategy comparisons, model performance, and experiment history.</li>
+</ul>
+
+<h2>2. MVP Scope</h2>
+<h3>In Scope</h3>
+<ul>
+<li>College football</li><li>Games</li><li>Spread markets</li><li>Spread selections</li>
+<li>One Random Strategy</li><li>Runs</li><li>Bets</li><li>Dry-run execution</li>
+<li>Game-result settlement</li><li>Theoretical bankroll and P&amp;L</li>
+<li>Admin dashboard</li><li>Game/spread display</li><li>Run creation and results</li>
+<li>Bet history and basic performance visualizations</li>
+</ul>
+<h3>Explicitly Out of Scope</h3>
+<ul>
+<li>Kalshi integration or real-money execution</li><li>ML, LLMs, or reinforcement learning</li>
+<li>Self-modifying code</li><li>Other sports or market types</li>
+<li>Kafka, Redis, Kubernetes, or distributed infrastructure unless later justified</li>
+<li>Multi-tenant SaaS concepts; the domain uses <code>User</code></li>
+</ul>
+
+<h2>3. Initial Domain Model</h2>
+<p>The MVP uses a simple canonical domain model. External provider-specific identifiers should not leak into the domain prematurely.</p>
+<table>
+<tr><th>Entity</th><th>Purpose</th><th>Initial fields / concepts</th></tr>
+<tr><td><strong>User</strong></td><td>Owner of simulations and strategies.</td><td>id, name, email, created_at</td></tr>
+<tr><td><strong>Game</strong></td><td>Actual college football game.</td><td>id, season, week, home_team, away_team, start_time, status, home_score, away_score</td></tr>
+<tr><td><strong>Market</strong></td><td>Something that can be bet on for a game.</td><td>id, game_id, type, status</td></tr>
+<tr><td><strong>Selection</strong></td><td>Concrete choice within a market.</td><td>id, market_id, side/name, line, price</td></tr>
+<tr><td><strong>Strategy</strong></td><td>Logic that generates betting decisions.</td><td>id, user_id, name, type, configuration</td></tr>
+<tr><td><strong>Run</strong></td><td>Execution of a strategy against selected games.</td><td>id, user_id, strategy_id, bankroll, stake_per_bet, status, metrics</td></tr>
+<tr><td><strong>Bet</strong></td><td>Immutable record of a strategy decision.</td><td>id, run_id, selection_id, stake, price, status, outcome, profit, timestamps</td></tr>
+</table>
+
+<h3>Market / Selection Design</h3>
+<p>A spread should not be a column directly on <code>Market</code>. The design should support future market types without prematurely implementing them.</p>
+<pre>Game
+ └── Market (type = SPREAD)
+      ├── Selection: USC -3.5
+      └── Selection: UCLA +3.5</pre>
+<p>Future examples could include TOTAL, MONEYLINE, or PLAYER_PROP, but these are not implemented in the MVP.</p>
+
+<h2>4. Data Requirements</h2>
+<p>The simulator needs two categories of information:</p>
+<ol>
+<li><strong>Game information:</strong> teams, game time, season/week, status, and final scores.</li>
+<li><strong>Market information:</strong> the spread currently available for each game.</li>
+</ol>
+<p>For the MVP, external provider details belong in an ingestion/integration layer rather than the core domain.</p>
+<pre>External Data Provider
+        ↓
+   Ingestion Layer
+        ↓
+  Canonical Domain
+        ↓
+    PostgreSQL
+        ↓
+      FastAPI
+        ↓
+       React</pre>
+<p>The first implementation can use seeded/local data to prove the application path. A real college-football data provider can then replace the seed data without changing the UI/domain contract.</p>
+
+<h2>5. Dry Run Adapter</h2>
+<p>The strategy never places bets directly. It produces a <strong>BetDecision</strong>; the Dry Run adapter records the theoretical execution.</p>
+<pre>Strategy
+   ↓
+BetDecision
+   ↓
+DryRunAdapter
+   ↓
+Bet
+   ↓
+Game Result
+   ↓
+Settlement
+   ↓
+Profit / Loss
+   ↓
+Run Metrics</pre>
+<h3>Bet Lifecycle</h3>
+<pre>OPEN
+  ↓
+BET PLACED
+  ↓
+GAME COMPLETES
+  ↓
+WIN / LOSS
+  ↓
+SETTLED</pre>
+<p>The bet captures the spread/price/stake available at decision time. If market data later changes, the historical bet is not rewritten.</p>
+<h3>Settlement</h3>
+<p>Settlement is based on the final game score and the spread associated with the selection.</p>
+<pre>Example:
+
+USC 31
+UCLA 24
+
+USC -3.5
+
+Score margin = 7
+7 > 3.5
+→ WIN</pre>
+<p>The exact accounting model will be finalized with the initial data contract. The key requirement is deterministic tracking of theoretical bankroll, stake, outcome, and realized profit/loss.</p>
+
+<h2>6. Initial API Contract</h2>
+<h3>Games</h3><pre>GET /api/games
+GET /api/games/{game_id}</pre>
+<h3>Markets</h3><pre>GET /api/games/{game_id}/markets
+GET /api/markets/{market_id}</pre>
+<h3>Strategies</h3><pre>GET  /api/strategies
+POST /api/strategies
+GET  /api/strategies/{strategy_id}</pre>
+<h3>Runs</h3><pre>GET  /api/runs
+POST /api/runs
+GET  /api/runs/{run_id}</pre>
+<p>Example Run creation:</p>
+<pre>{
+  "strategy_id": "random",
+  "game_ids": ["game-123", "game-456"],
+  "starting_bankroll": 1000,
+  "stake_per_bet": 10
+}</pre>
+<h3>Bets</h3><pre>GET /api/runs/{run_id}/bets
+GET /api/bets/{bet_id}</pre>
+<h3>Dashboard</h3><pre>GET /api/dashboard</pre>
+
+<h2>7. Technology Stack</h2>
+<table>
+<tr><th>Area</th><th>MVP choice</th></tr>
+<tr><td>Backend</td><td>Python + FastAPI</td></tr>
+<tr><td>Data validation</td><td>Pydantic</td></tr>
+<tr><td>ORM / DB access</td><td>SQLAlchemy</td></tr>
+<tr><td>Migrations</td><td>Alembic</td></tr>
+<tr><td>Database</td><td>PostgreSQL</td></tr>
+<tr><td>Frontend</td><td>React + TypeScript + Vite</td></tr>
+<tr><td>Testing</td><td>pytest + frontend test tooling</td></tr>
+<tr><td>Local infrastructure</td><td>Docker Compose</td></tr>
+<tr><td>Primary IDE</td><td>PyCharm</td></tr>
+</table>
+
+<h3>Local Development</h3>
+<p>PyCharm is the primary development environment. Backend and frontend remain separate applications in the same repository.</p>
+<pre>college-football-simulator/
+├── backend/
+│   ├── app/
+│   ├── tests/
+│   └── pyproject.toml
+├── frontend/
+│   ├── src/
+│   └── package.json
+├── migrations/
+├── docker-compose.yml
+├── .env.example
+└── README.md</pre>
+<pre>docker compose up db
+
+cd backend
+uv run fastapi dev
+
+cd frontend
+npm run dev</pre>
+
+<h2>8. Admin Dashboard</h2>
+<p>The admin dashboard is explicitly part of the MVP.</p>
+<ul>
+<li><strong>Dashboard:</strong> bankroll, active runs, recent results, and performance.</li>
+<li><strong>Games:</strong> upcoming games, start times, teams, and available spreads.</li>
+<li><strong>Strategies:</strong> manage the Random Strategy.</li>
+<li><strong>Runs:</strong> create and inspect strategy runs.</li>
+<li><strong>Bets:</strong> view bets, selections, outcomes, and P&amp;L.</li>
+</ul>
+
+<h2>9. Vertical Slice Development Plan</h2>
+<div class="phase"><strong>Vertical Slice #1 — Games &amp; Spreads</strong><p>Open the UI and see realistic college football games and their spreads. Build the database models, FastAPI endpoints, React Games page, and initial seed/data ingestion mechanism.</p></div>
+<div class="phase"><strong>Vertical Slice #2 — Random Strategy</strong><p>Select games and execute the Random Strategy. The strategy receives available spread selections and produces betting decisions.</p></div>
+<div class="phase"><strong>Vertical Slice #3 — Dry Run Bets</strong><p>Record theoretical bets and show them in the UI. Introduce the Dry Run adapter and connect decisions to Bets and Runs.</p></div>
+<div class="phase"><strong>Vertical Slice #4 — Settlement &amp; P&amp;L</strong><p>Settle open bets when games complete and calculate bankroll, profit/loss, ROI, and run-level metrics.</p></div>
+
+<div class="goal"><strong>MVP is complete when:</strong><br>
+A User can open the dashboard → see college football games and spreads → start a Random Strategy Run → see theoretical bets → settle completed games → see the resulting P&amp;L.</div>
+
+<h2>10. Agentic Development Approach</h2>
+<p>The coding agent should not be asked to build the entire future platform in one pass.</p>
+<pre>Requirement
+    ↓
+Coding Agent
+    ↓
+Implementation
+    ↓
+Automated Tests
+    ↓
+Run Application
+    ↓
+Evaluate Acceptance Criteria
+    ↓
+Human / Agent Review
+    ↓
+Next Slice</pre>
+<p>The future AI/RL system will use the same philosophy at a larger scale: changes are evaluated against objective metrics rather than accepted simply because the code looks good.</p>
+
+<h2>11. MVP Success Criteria</h2>
+<ul>
+<li>The application runs locally with documented setup steps.</li>
+<li>A browser UI displays college football games and spread selections.</li>
+<li>Games and markets are persisted in PostgreSQL.</li>
+<li>The Random Strategy can be executed against selected games.</li>
+<li>The Dry Run adapter records bets without placing real wagers.</li>
+<li>Completed games can settle open bets deterministically.</li>
+<li>Runs expose starting bankroll, ending bankroll, bets, wins/losses, profit, and ROI.</li>
+<li>The UI makes the complete Games → Spreads → Strategy → Bets → Results → P&amp;L loop visible.</li>
+<li>The Strategy/Execution boundary remains clean enough to support future ML, AI, RL, and real-market adapters.</li>
+</ul>
+
+<footer><strong>Guiding principle:</strong> Build the smallest complete system first. Avoid speculative infrastructure and future-provider abstractions until the product actually needs them.</footer>
+</div>
+</body>
+</html>
