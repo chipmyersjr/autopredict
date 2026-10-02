@@ -87,7 +87,7 @@ curl http://127.0.0.1:8001/api/games/db3173a4-944a-5c22-b40f-0ddda00e7b7f/market
 curl http://127.0.0.1:8001/api/markets/750d75e2-a2e0-5317-938b-9d0ddc6a713c
 ```
 
-Use a `market.id` from the games response for market detail. All responses expose the entity fields and timestamps shown in `/docs`. UUIDs are strings; timestamps are UTC ISO 8601. Exact lines/prices are decimal strings, such as `"-3.50"` and `"1.9091"`; a nullable line is JSON `null`. Game order is kickoff then ID; nested markets and selections order by ID. Stored statuses and inactive records remain visible. Empty games or a known game without markets return `[]`; unknown valid IDs return 404 (`Game not found` / `Market not found`), malformed IDs return 422, and database errors return 503 with `{"detail":"Database unavailable"}`. Reads make no provider calls. Current-week filtering and provider refresh belong to the separate ingress epic.
+Use a `market.id` from the games response for market detail. All responses expose the entity fields and timestamps shown in `/docs`. UUIDs are strings; timestamps are UTC ISO 8601. Exact lines/prices are decimal strings, such as `"-3.50"` and `"1.9091"`; a nullable line is JSON `null`. Game order is kickoff descending (latest first), then ID ascending for ties; nested markets and selections order by ID. Stored statuses and inactive records remain visible. Empty games or a known game without markets return `[]`; unknown valid IDs return 404 (`Game not found` / `Market not found`), malformed IDs return 422, and database errors return 503 with `{"detail":"Database unavailable"}`. Reads make no provider calls. Current-week filtering and provider refresh belong to the separate ingress epic.
 
 ## Frontend API access
 
@@ -97,7 +97,7 @@ The backend allows GET requests from `http://127.0.0.1:5173` and `http://localho
 CORS_ORIGINS=["http://127.0.0.1:5173","http://localhost:5173","http://localhost:5174"]
 ```
 
-Origins must be explicit HTTP(S) origins without paths, wildcards, or credentials. CORS does not enable browser credentials. One `/api/games` request supplies the Games page's spread data; preserve decimal precision, distinguish null from zero, and convert UTC kickoffs for display. The frontend Games page remains the initialization placeholder pending frontend implementation.
+Origins must be explicit HTTP(S) origins without paths, wildcards, or credentials. CORS does not enable browser credentials. One `/api/games` request supplies the Games page's spread data; preserve decimal precision, distinguish null from zero, and convert UTC kickoffs for display. The Games page loads these stored records and displays their teams, local kickoff times, statuses, scores when present, and active spread selections. Fictional demo data is explicitly labeled. A failed read offers Retry; this only rereads stored data.
 
 ## Verify the API
 
@@ -162,10 +162,11 @@ From the repository root:
 ```bash
 cd frontend
 npm ci
+cp -n .env.example .env.local
 npm run dev
 ```
 
-Leave the terminal running and open the URL printed by Vite, normally http://127.0.0.1:5173. The initial Games page displays **Hey its the game page**. This page works independently of FastAPI, PostgreSQL, and Docker. Stop the development server with Ctrl+C. If port 5173 is occupied, Vite prints the next available port; use that URL.
+Leave the terminal running and open the URL printed by Vite, normally http://127.0.0.1:5173. The Games page displays persisted games and spreads when the migrated, seeded backend is running. Without the backend, it displays a request error with Retry. Stop the development server with Ctrl+C. If port 5173 is occupied, Vite prints the next available port; use that URL.
 
 From `frontend/`, check TypeScript and create a production build:
 
@@ -174,3 +175,20 @@ npm run build
 ```
 
 Build output goes to `frontend/dist/`. To check the built app locally, run `npm run preview` and open the printed URL (normally http://127.0.0.1:4173).
+
+### Configure and test the Games view
+
+`frontend/.env.local` sets the public `VITE_API_BASE_URL` (default `http://127.0.0.1:8000`, without `/api`). If using the backend on port 8001, set `VITE_API_BASE_URL=http://127.0.0.1:8001` and restart Vite. Vite environment variables are included in browser code; put no secrets there. Alternate Vite/preview origins must be added to root `CORS_ORIGINS` and the backend restarted.
+
+The view preserves backend ordering and decimal odds precision. Zero spread is displayed as Pick’em; a null line or inactive selection is omitted. Games with no displayed active spread show “Spread unavailable.” Times use the browser timezone; stored statuses and scores are displayed without inferring completion from elapsed time. Provider Refresh is a separate ingress task.
+
+From the repository root, run the browser tests using installed Google Chrome and Node 24:
+
+```bash
+cd frontend
+npm test
+npm run build
+LIVE_API=1 TEST_API_BASE_URL=http://127.0.0.1:8001 npm test
+```
+
+Tests start a separate Vite server on port 5175. Keep that port free. For the live test, add `http://127.0.0.1:5175` to root `CORS_ORIGINS` and restart the backend before running. Standard tests intercept API responses without changing the database; the live test only reads the documented five seeded games. Screenshots are written to ignored `frontend/test-results/`. For Playwright-managed Chromium instead, run `npx playwright install chromium` and `PLAYWRIGHT_CHANNEL=chromium npm test`. Browser tests cover loading, errors/retry, empty data, inactive/null selections, exact decimal values, StrictMode stale-request cleanup, local timezone and mobile/desktop layout.

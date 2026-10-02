@@ -1,21 +1,43 @@
-:root {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: #1f2937;
-  background: #f7f8fa;
-  line-height: 1.5;
-}
-
-body {
-  margin: 0;
-}
-
-main {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 48px 24px;
-}
-
-h1 {
-  margin: 0;
-  font-size: clamp(1.5rem, 4vw, 2rem);
+:root { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #172b3a; background: #f5f7f8; line-height: 1.5; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 1040px; margin: 0 auto; padding: 40px 24px 64px; }
+p { margin: 0; }
+.brand { font-weight: 700; color: #176451; margin-bottom: 32px; }
+.brand span { color: #536575; font-weight: 400; }
+h1 { font-size: clamp(2rem, 5vw, 2.75rem); letter-spacing: -.04em; line-height: 1.2; margin: 0 0 12px; }
+.intro { color: #536575; }
+.demo-note { margin-top: 24px; padding: 14px 18px; border: 1px solid #cbdcd5; border-radius: 8px; background: #ecf4ef; font-size: .9rem; }
+.results-summary { color: #536575; font-size: .85rem; margin: 28px 0 16px; }
+.games-list, .selections { list-style: none; padding: 0; margin: 0; }
+.games-list { display: grid; gap: 18px; }
+.game-card { background: white; border: 1px solid #dce3e8; border-radius: 12px; overflow: hidden; padding: 22px 24px 0; }
+.game-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.eyebrow { color: #536575; font-size: .8rem; font-weight: 600; }
+.badge { border: 1px solid #dce3e8; background: #f5f7f8; border-radius: 20px; padding: 3px 10px; font-size: .75rem; text-transform: capitalize; }
+h2 { font-size: 1.3rem; line-height: 1.35; margin: 0 0 8px; overflow-wrap: anywhere; }
+.at { color: #536575; font-size: .9rem; font-weight: 400; }
+time, .venue { color: #536575; font-size: .9rem; }
+.venue, .scores { margin-top: 6px; }
+.spreads { margin: 20px -24px 0; padding: 16px 24px; border-top: 1px solid #e5eaee; background: #fafcfc; }
+h3 { font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: #536575; margin: 0 0 8px; }
+.spreads section + section { margin-top: 18px; }
+.selections li { display: grid; grid-template-columns: minmax(0, 1fr) 90px 190px; align-items: baseline; gap: 12px; padding: 6px 0; }
+.selection-team { overflow-wrap: anywhere; }
+.line { color: #176451; font-variant-numeric: tabular-nums; }
+.price { color: #536575; font-size: .85rem; text-align: right; }
+.price strong { color: #172b3a; margin-left: 8px; font-variant-numeric: tabular-nums; }
+.unavailable { font-size: .9rem; color: #536575; }
+.state-panel { padding: 28px; margin-top: 24px; background: white; border: 1px solid #dce3e8; border-radius: 12px; }
+.state-panel p { color: #536575; }
+.error-panel { border-color: #d6a59e; }
+button { margin-top: 16px; padding: 10px 20px; background: #176451; color: white; border: 0; border-radius: 6px; font: inherit; cursor: pointer; }
+button:focus-visible { outline: 3px solid #2563eb; outline-offset: 4px; }
+@media (max-width: 600px) {
+  main { padding: 24px 16px 40px; }
+  .brand { margin-bottom: 24px; }
+  .game-card { padding: 18px 16px 0; }
+  .spreads { margin-left: -16px; margin-right: -16px; padding: 14px 16px; }
+  .selections li { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
+  .price { grid-column: 1 / -1; text-align: left; }
 }

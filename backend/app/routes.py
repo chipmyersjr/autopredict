@@ -26,7 +26,7 @@ def find_game(session: Session, game_id: UUID) -> Game:
 @router.get("/games", response_model=list[GameResponse], tags=["Games"])
 def list_games(session: DatabaseSession):
     """Read all stored games, including demo/historical data, with markets and selections."""
-    return session.scalars(select(Game).options(GAME_GRAPH).order_by(Game.start_time, Game.id)).all()
+    return session.scalars(select(Game).options(GAME_GRAPH).order_by(Game.start_time.desc(), Game.id)).all()
 
 
 @router.get("/games/{game_id}", response_model=GameResponse, tags=["Games"], responses={404: {"description": "Game not found"}})

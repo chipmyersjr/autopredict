@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from unittest.mock import MagicMock
 from uuid import uuid4
@@ -31,7 +31,7 @@ def test_empty_and_nested_game_contract(api):
     assert response.status_code == 200
     games = response.json()
     assert len(games) == 5
-    assert [(g["start_time"], g["id"]) for g in games] == sorted((g["start_time"], g["id"]) for g in games)
+    assert [(g["start_time"], g["id"]) for g in games] == sorted(((g["start_time"], g["id"]) for g in games), key=lambda item: (-datetime.fromisoformat(item[0]).timestamp(), item[1]))
     assert set(games[0]) == {"id", "season", "week", "home_team", "away_team", "start_time", "status", "home_score", "away_score", "venue", "notes", "created_at", "updated_at", "markets"}
     for game in games:
         assert client.get(f'/api/games/{game["id"]}').json() == game
@@ -52,7 +52,7 @@ def test_empty_and_nested_game_contract(api):
                 assert isinstance(selection["line"], str)
                 assert selection["market_id"] == market["id"]
                 assert selection["is_active"] is True
-    assert games[-1]["markets"] == []
+    assert games[0]["markets"] == []
     assert any(s["line"] == "0.00" for g in games for m in g["markets"] for s in m["selections"])
     assert engine.pool.checkedout() == 0
     docs = client.get("/openapi.json").json()
@@ -128,7 +128,7 @@ def test_list_queries_do_not_grow_per_game_and_ties_are_stable(api):
         games = client.get("/api/games").json()
         assert len(games) == 25
         assert len(statements) == 3
-        assert [(g["start_time"], g["id"]) for g in games] == sorted((g["start_time"], g["id"]) for g in games)
+        assert [(g["start_time"], g["id"]) for g in games] == sorted(((g["start_time"], g["id"]) for g in games), key=lambda item: (-datetime.fromisoformat(item[0]).timestamp(), item[1]))
     finally:
         event.remove(engine, "before_cursor_execute", count_query)
 

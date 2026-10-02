@@ -1,6 +1,6 @@
 # Design 1, part 1 — Games and spreads frontend
 
-Area status: `not_started`
+Area status: `complete`
 
 ## Objective and governing design
 
@@ -15,8 +15,8 @@ Sources of truth:
 
 ## Current implementation and integration contract
 
-- `frontend/src/pages/GamesPage.tsx` renders only the initialization heading. `src/main.tsx` already mounts it with React StrictMode; existing CSS supplies a minimal page container. Reuse this application rather than add a second entry point.
-- Backend `app/routes.py` and `app/schemas.py` implement `GET /api/games`: an unfiltered array, ordered by kickoff then UUID, with nested markets and selections. One request supplies the page; no per-game requests are needed.
+- Initial baseline: `frontend/src/pages/GamesPage.tsx` contained only the initialization heading. The completed view reuses the existing React StrictMode entry point and stylesheet; no second application was added.
+- Backend `app/routes.py` and `app/schemas.py` implement `GET /api/games`: an unfiltered array, ordered by kickoff descending (latest first), then UUID ascending, with nested markets and selections. One request supplies the page; no per-game requests are needed.
 - Consume game IDs, teams, season/week, kickoff, stored status, nullable scores/venue/notes, and nested market/selection fields. Spread lines and decimal odds are exact JSON strings; line can be null. Keep the raw values as strings and distinguish zero (pick’em) from missing line.
 - Display kickoff in the browser's local timezone with a visible timezone label. Preserve stored game status; elapsed time alone does not establish completion. Unfiltered records can include historical or inactive data, so do not call the entire list “upcoming” or promise live availability.
 - Display spread selections from `type = spread`, `status = active` markets and `is_active = true` selections with a non-null line. Associate each line/price with its selection's team name. Never construct a missing opposing selection or merge selections across markets; render multiple markets separately when present.
@@ -26,37 +26,37 @@ Sources of truth:
 
 ## Reviewable tasks
 
-- [ ] FE-01 — Connect the Games page to the read API
-  - Status: `not_started`
+- [x] FE-01 — Connect the Games page to the read API
+  - Status: `complete`
   - Scope: Add TypeScript response types and a small games API client, configurable API base URL, and page request state using the existing React/Vite setup. Load `GET /api/games` on mount; handle non-2xx responses and transport failures. Clean up requests on unmount and prevent stale responses from replacing newer state, including StrictMode effect cleanup.
   - Dependencies: Completed backend BE-03 and BE-05; existing frontend bootstrap.
   - Acceptance criteria: The page obtains the nested games array from the configured backend without per-game calls, provider calls, or embedded fixture fallback. Decimal strings/nulls reach the view unchanged. Loading, success, empty, and failure states are distinguishable; failed requests do not leave permanent loading state.
   - Validation: Frontend request/state tests with controlled responses cover nested success, empty array, HTTP 503, network failure and aborted/stale requests. Run `npm run build` from `frontend/` with its declared Node 24 runtime.
-  - Completion notes: Pending. Expected files: frontend API/types modules, GamesPage.tsx, Vite environment declarations/example and package scripts/dependencies only as required for meaningful frontend tests.
+  - Completion notes: Added `frontend/src/api/games.ts` response types/read client, `.env.example` public API configuration and abort-aware page state in GamesPage.tsx. Chrome tests passed for nested success, empty array, HTTP 503, transport/JSON failure and StrictMode stale-response abort; raw Decimal strings remain strings. Node 24.21.0 production typecheck/build passed.
 
-- [ ] FE-02 — Render games and spread selections
-  - Status: `not_started`
+- [x] FE-02 — Render games and spread selections
+  - Status: `complete`
   - Scope: Replace the placeholder with a Games heading, explicit demo-data label and a readable list or table. Show away/home teams, local kickoff with timezone, season/week and stored status; show available scores without converting null to zero. Render spread markets with each team's signed handicap and labeled decimal odds. Retain backend game order.
   - Dependencies: FE-01.
   - Acceptance criteria: Seeded API data shows five games, four spread markets and eight selections when using the documented untouched seed. Positive/negative lines retain their sign; zero is displayed as pick’em; exact odds remain readable. A game without markets remains visible with “Spread unavailable.” Closed markets and inactive/null-line selections are not presented as available spreads. Multiple markets retain their ownership and any incomplete market does not acquire fabricated selections. The view does not imply that demo quotes are live or actionable bets.
   - Validation: Rendering/formatting tests cover paired lines, zero versus null, exact odds, inactive selections, closed markets, multiple/incomplete markets, nullable/zero scores and local-time formatting. Compare the page's values with a controlled nested response.
-  - Completion notes: Pending. Expected files: GamesPage.tsx, small display components/formatters if useful, and relevant tests.
+  - Completion notes: GamesPage.tsx renders teams, season/week, stored status, local kickoff/timezone, optional venue/scores and separate active spread markets. String-only line formatting preserves sign, trims display zeroes and labels zero Pick’em; odds are unchanged. Browser fixtures passed for closed/inactive/null-line selections, multiple/incomplete markets and null/zero scores. Real API/browser parity verified 5 games, 4 markets, 8 selections, two zero lines and one missing-market game.
 
-- [ ] FE-03 — Finish page states and responsive accessibility
-  - Status: `not_started`
+- [x] FE-03 — Finish page states and responsive accessibility
+  - Status: `complete`
   - Scope: Style the games view in the existing stylesheet; provide readable loading, no-games and request-error messages, plus a keyboard-accessible Retry action for failed stored-data reads. Make long team names and spread content work on small screens. Use semantic headings/list or table markup and accessible status/error announcements.
   - Dependencies: FE-01, FE-02.
   - Acceptance criteria: Users can distinguish an empty database from a failed request and from a game without spreads. Retry reissues only the stored games read and recovers after failure. Loading prevents repeated retry requests. At mobile and desktop sizes the content is readable without clipped teams/odds; controls have visible focus and messages do not rely solely on color.
   - Validation: Interaction tests cover error → Retry → success and loading behavior. Browser checks at approximately 375px and 1280px verify layout, keyboard focus and state messages; record evidence rather than mark visual checks complete from a build alone.
-  - Completion notes: Pending. Expected files: GamesPage.tsx, styles.css and page interaction tests.
+  - Completion notes: Updated styles.css with responsive game cards, wrapping team names, labeled decimal odds, accessible status/error messaging and focus-visible Retry. Chrome tests passed error → keyboard Retry → loading → success for 503/network/invalid JSON, and 375px/1280px long-team layout checks with no horizontal overflow or clipped text. Inspected generated mobile and real-data screenshots; readable wrapping and layout confirmed.
 
-- [ ] FE-04 — Verify and document the complete games slice
-  - Status: `not_started`
+- [x] FE-04 — Verify and document the complete games slice
+  - Status: `complete`
   - Scope: Document frontend environment/start commands alongside existing backend migration/seed instructions in README. Validate the real PostgreSQL → FastAPI → browser flow, run frontend checks, and record completion evidence in both sibling plans without reopening completed backend tasks unless a defect requires it.
   - Dependencies: FE-01–FE-03; completed backend BE-02–BE-06 and a running migrated/seeded development database/API.
   - Acceptance criteria: Following the documented setup opens the Games page with persisted demo games and correct spreads. Browser network access/CORS works for the documented origins and configurable backend port. Loading, empty, unavailable spreads and failure/recovery have validation evidence. All applicable frontend tasks and slice acceptance criteria are satisfied before marking the area complete.
   - Validation: Run frontend tests and `npm run build` on Node 24; browser smoke test against the actual seeded backend and compare displayed values to `/api/games`, including the zero-line pair and game without markets. Use controlled responses or an isolated test database for empty/error cases; do not delete or reseed CHIP's data for validation. Run `git diff --check`; record actual results and any unperformed checks.
-  - Completion notes: Pending. Expected files: README and both sibling plans; no design edits.
+  - Completion notes: Updated README with environment/start/test/build commands, CORS and demo/formatting behavior; added Playwright config, games.spec.ts, package test dependency/script/lockfile and ignored browser artifacts. Full LIVE_API suite: 10 passed on Chrome with Node 24.21.0. `npm run build` and `git diff --check` passed. Actual PostgreSQL → FastAPI → browser read/CORS verified using isolated backend port 8002 and frontend port 5175, without modifying development data or root configuration. Review services left running; port 5173 existing unresponsive process left untouched.
 
 ## Frontend acceptance criteria
 
@@ -111,3 +111,21 @@ Sources of truth:
 - Validation: Reviewed AGENTS.md, design 1/3, both slice plans, ingress frontend plan, backend routes/schemas, and current frontend entry point/page/styles/package/Vite configuration. Confirmed the Games page is still a placeholder and the backend supplies the required nested read contract. Prior backend results are referenced, not rerun or claimed as new validation.
 - Blockers: None for implementation planning. Confirm local API availability when starting runtime work.
 - Next step: FE-01, then FE-02, FE-03 and FE-04 in dependency order. Keep the backend area complete and the full epic incomplete until frontend validation passes.
+
+### 2026-10-01 — FE-01–FE-04 completed
+
+- Completed task IDs: FE-01, FE-02, FE-03, FE-04. Frontend area complete; both areas now meet seeded vertical slice one acceptance criteria.
+- Validation: 10 Playwright Chrome tests passed, including actual seeded API parity, local Pacific time, signed/zero/null lines, exact odds, multiple/incomplete/closed markets, inactive selections, null/zero scores, empty data, three failure/retry paths, StrictMode abort/stale response, keyboard focus and 375px/1280px overflow checks. Screenshots inspected in `frontend/test-results/games-live.png` and `games-375.png`; desktop screenshot also generated. Node 24.21.0 `npm run build` and `git diff --check` passed. Installed test dependency audit reported zero vulnerabilities.
+- Runtime: Existing frontend on 5173 was unresponsive and left untouched. Started a separate backend on 8002 with process-only CORS allowing 5175, using the existing migrated/seeded PostgreSQL database, and Vite on 5175 pointing at it. Review URL: http://127.0.0.1:5175/. No database writes, seed changes, root environment changes, or provider calls. Sandbox-approved package download/local browser/server access used.
+- Limitations: Browser coverage is Chrome only; backend tests were not rerun because backend code/contracts were unchanged. Historical handoff deferrals above no longer apply. Provider refresh/current-window/provenance/server kickoff eligibility remain the separate ingress epic; no live odds claim or bet interaction is added here.
+- Blockers: None. Next step: Continue `3_1_game_info_ingress` or the next MVP slice when requested. Stop the review Vite process before running tests, which require port 5175 free.
+
+### 2026-10-01 — Latest kickoff first requested by CHIP
+
+- [x] FE-05 — Switch games to descending kickoff order
+  - Status: `complete`
+  - Scope: User-requested ordering refinement under design/1_mvp.html games display; no design document specifies sort direction. Backend orders kickoff descending, ID ascending for ties; frontend preserves API order.
+  - Dependencies: Completed games slice.
+  - Acceptance criteria: Later kickoffs appear first with deterministic ties.
+  - Validation: PostgreSQL games API ordering tests; frontend retains API order.
+  - Completion notes: Updated backend/app/routes.py, backend/tests/test_games_api.py, README and sibling contracts. All 10 PostgreSQL games API tests passed, including descending kickoff and ascending UUID ties. Frontend already preserves response order; no frontend code change needed. `git diff --check` passed. Existing upstream test-client warning remains.

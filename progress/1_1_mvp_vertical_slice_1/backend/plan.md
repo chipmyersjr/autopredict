@@ -13,7 +13,7 @@ Sources of truth:
 - [Ingress design](../../../design/3_game_info_ingress.html), section 6: demo fixtures remain separate and clearly labeled; provider refresh/current-window work stays in design 3 part 1.
 - [Completed initialization plan](../../0_init_apps/backend/plan.md) for the existing setup.
 
-BE-01 through BE-06 are complete and validated. The backend can be completed independently, but the full vertical slice is complete only when the frontend also displays games and spreads.
+BE-01 through BE-06 are complete and validated. Frontend FE-01–FE-04 are now complete with seeded API/browser integration evidence; the seeded games-and-spreads vertical slice is complete.
 
 ## Scope and implementation decisions
 
@@ -58,7 +58,7 @@ These response details fill in the design's endpoint contract for this slice; th
 
 - Game responses include all Game fields listed above; Market and Selection responses include their corresponding fields.
 - UUIDs are JSON strings; timestamps are ISO 8601 with UTC offset; `line` and `price` are decimal strings (or null for nullable line). JSON booleans are used for `is_active`.
-- Game ordering: `start_time`, then id. Nested markets and selections: stable ordering by id.
+- Game ordering: `start_time` descending (latest first), then id ascending. Nested markets and selections: stable ordering by id.
 - Return stored statuses and inactive records; consumers distinguish available selections by market status and `is_active`. Do not silently remove completed or historical rows.
 - Empty database: `/api/games` returns `[]`. Existing game without markets: markets endpoint and nested markets return `[]`.
 - Unknown valid UUID: 404 with `{"detail":"Game not found"}` or `{"detail":"Market not found"}`. Malformed UUID: FastAPI validation response, HTTP 422.
@@ -194,3 +194,24 @@ The example shows one selection for brevity; seeded spread markets contain both 
 - Replaced the sibling frontend handoff-only body with FE-01–FE-04 for API loading, games/spread rendering, page states/accessibility, and end-to-end validation. Earlier frontend planning deferral entries are historical; the actionable sibling plan now governs execution.
 - Validation: Reviewed existing routes/schemas and frontend placeholder against design 1 and design 3. No API contract changes or new runtime checks in this loop.
 - Blockers: None for frontend planning. Next step: Frontend FE-01; record final slice integration evidence after FE-04. Full epic remains incomplete.
+
+### 2026-10-01 — Frontend execution started
+
+- FE-01 is in progress; backend remains complete. Implement FE-01–FE-04 in dependency order against the existing nested read contract.
+
+### 2026-10-01 — Games frontend and slice integration completed
+
+- Completed frontend IDs: FE-01–FE-04; backend BE-01–BE-06 remain complete. Both areas satisfy seeded vertical slice one acceptance criteria.
+- Validation: 10 Chrome browser tests passed on Node 24.21.0, including actual persisted API values for five games/four markets/eight selections, zero-line pair and game without markets, CORS, local timestamps, error/retry and mobile/desktop rendering. Frontend production build/typecheck and `git diff --check` passed. No backend code/contracts changed; prior backend validation remains applicable and was not rerun.
+- Runtime: Separate verification backend on 8002 reads the existing PostgreSQL database and allows frontend origin 5175 via process-only CORS. Games review URL: http://127.0.0.1:5175/. Existing unresponsive frontend on 5173 and backend on 8001 left untouched. No seed/migration/data/configuration changes or provider requests in this loop.
+- Blockers: None for this slice. Next: Separately planned ingress work or later MVP slices; provider refresh/current-week/provenance/server kickoff eligibility are not part of this completed demo slice.
+
+### 2026-10-01 — Latest kickoff first requested by CHIP
+
+- [x] BE-07 — Switch games to descending kickoff order
+  - Status: `complete`
+  - Scope: User-requested ordering refinement under design/1_mvp.html games display; no design document specifies sort direction. Backend orders kickoff descending, ID ascending for ties; frontend preserves API order.
+  - Dependencies: Completed games slice.
+  - Acceptance criteria: Later kickoffs appear first with deterministic ties.
+  - Validation: PostgreSQL games API ordering tests; frontend retains API order.
+  - Completion notes: Updated backend/app/routes.py, backend/tests/test_games_api.py, README and sibling contracts. All 10 PostgreSQL games API tests passed, including descending kickoff and ascending UUID ties. Frontend already preserves response order; no frontend code change needed. `git diff --check` passed. Existing upstream test-client warning remains.

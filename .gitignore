@@ -20,3 +20,7 @@ htmlcov/
 # Frontend dependencies and build output
 node_modules/
 frontend/dist/
+
+# Browser test artifacts
+frontend/test-results/
+frontend/playwright-report/
