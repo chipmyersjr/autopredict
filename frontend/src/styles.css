@@ -41,3 +41,10 @@ button:focus-visible { outline: 3px solid #2563eb; outline-offset: 4px; }
   .selections li { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
   .price { grid-column: 1 / -1; text-align: left; }
 }
+button:disabled { opacity: .55; cursor: default; }
+.game-select { display: flex; align-items: center; gap: 10px; margin-top: 16px; overflow-wrap: anywhere; }
+input:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+.strategy-panel { margin-bottom: 24px; }
+.strategy-panel p + p { margin-top: 8px; }
+.decision-results { margin-top: 24px; border-top: 1px solid #dce3e8; padding-top: 20px; overflow-wrap: anywhere; }
+.decision-results li { margin: 12px 0; }

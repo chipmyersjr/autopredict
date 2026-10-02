@@ -23,6 +23,9 @@ These instructions apply to the entire repository. Read them before planning or 
 - Use the existing `front_end` spelling. Backend and frontend are sibling directories; do not nest one under the other.
 - Reuse existing epic directories and plans. Preserve completed work and useful history instead of replacing them on each loop.
 - If an epic requires no work in one area, keep its plan and state why that area is not applicable.
+- Deliver plans as settled, actionable implementation plans. Resolve scope, behavior, API/data contracts, and implementation choices during planning; do not add tasks such as “finalize contracts,” “consider options,” or “discuss requirements” that defer the planning work to implementation.
+- When a decision requires CHIP’s input, initiate that discussion before finishing the plan. Continue independent planning while awaiting the answer, but label affected plans as blocked drafts until the decision is resolved. Do not present unresolved proposals as a final plan or bury the required discussion in a future task.
+- Make routine implementation choices within the governing design using agent judgment. Ask CHIP about actual ambiguity, conflicting design requirements, or product decisions that cannot be resolved from existing authority. Record settled decisions in the plans; any required design change still follows the design-authority rules above.
 
 ## Planning and execution loop
 

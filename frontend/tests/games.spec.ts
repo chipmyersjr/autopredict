@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test'
 import type { Game, Market, Selection } from '../src/api/games'
 
+test.beforeEach(async ({ page }) => {
+  if (!process.env.LIVE_API) await page.route('**/api/strategies', r => r.fulfill({ json: [] }))
+})
+
 const timestamps = { created_at: '2026-10-01T00:00:00+00:00', updated_at: '2026-10-01T00:00:00+00:00' }
 function selection(id: string, side: string, line: string | null, extra: Partial<Selection> = {}): Selection {
   return { ...timestamps, id, market_id: 'market', side, line, price: '1.9091', is_active: true, notes: null, ...extra }
@@ -15,6 +19,7 @@ function game(extra: Partial<Game> = {}): Game {
 test('renders paired signed spreads, exact odds and local kickoff', async ({ page }) => {
   const requests: string[] = []
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
+    if (route.request().url().endsWith('/api/strategies')) { await route.fulfill({ json: [] }); return }
     requests.push(route.request().url())
     await route.fulfill({ json: [game()] })
   })

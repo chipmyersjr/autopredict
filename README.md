@@ -192,3 +192,65 @@ LIVE_API=1 TEST_API_BASE_URL=http://127.0.0.1:8001 npm test
 ```
 
 Tests start a separate Vite server on port 5175. Keep that port free. For the live test, add `http://127.0.0.1:5175` to root `CORS_ORIGINS` and restart the backend before running. Standard tests intercept API responses without changing the database; the live test only reads the documented five seeded games. Screenshots are written to ignored `frontend/test-results/`. For Playwright-managed Chromium instead, run `npx playwright install chromium` and `PLAYWRIGHT_CHANNEL=chromium npm test`. Browser tests cover loading, errors/retry, empty data, inactive/null selections, exact decimal values, StrictMode stale-request cleanup, local timezone and mobile/desktop layout.
+
+
+### Random Strategy decision preview (vertical slice 2)
+
+Strategies are shared across users. Apply migrations and load the baseline explicitly:
+
+```sh
+cd backend
+uv run --locked alembic upgrade head
+uv run --locked python -m app.seed_strategy
+```
+
+The loader preserves an existing baseline, including edits or deactivation. Its stable UUID is `40000000-0000-4000-8000-000000000001`. Neither migrations nor seeding run at application startup. Restart a backend without hot reload to load new routes.
+
+| Method | Endpoint | Behavior |
+| --- | --- | --- |
+| GET | `/api/strategies` | List all shared strategies, including inactive records, ordered by UUID |
+| POST | `/api/strategies` | Create a shared Random Strategy; returns 201 |
+| GET | `/api/strategies/{strategy_id}` | Read one strategy |
+| POST | `/api/strategies/{strategy_id}/decisions` | Generate decision previews from selected stored games |
+
+Create body:
+
+```json
+{"name":"Random Strategy experiment","type":"random","config":null}
+```
+
+Optional `description` and `is_active` (default true) are supported. Configuration must be null or `{}`; unsupported types, blank names, ownership fields and other extra inputs return 422.
+
+Preview body (replace the UUID with a game ID from `GET /api/games`):
+
+```json
+{"game_ids":["<game-uuid>"]}
+```
+
+The response contains `strategy_id`, `generated_at` (UTC), `requested_game_ids`, `decisions`, and `skipped_games`. Each decision has canonical `game_id`, `market_id`, `selection_id`, `side`, exact decimal-string `line` and `price`, and nullable `quote_provenance`. Example decision:
+
+```json
+{"game_id":"<game-uuid>","market_id":"<market-uuid>","selection_id":"<selection-uuid>","side":"USC","line":"-3.50","price":"1.9091","quote_provenance":null}
+```
+
+The backend uniformly samples one selection per eligible game from active spread markets with valid paired home/away selections. Server time must be before kickoff and game status must be scheduled. Null/nonfinite lines, invalid odds, unpaired lines, inactive selections, and closed markets are excluded. Zero is a valid line. A fresh click can generate a different decision.
+
+Known ineligible games return skips with `game_not_scheduled`, `kickoff_reached`, or `spread_unavailable` in that precedence. Mixed and all-skipped responses return 200. Empty/duplicate/malformed game IDs return 422; unknown strategy or game IDs return 404 before random generation; an inactive strategy returns 409. Database failures return sanitized 503. All errors use FastAPI's `detail` format.
+
+Preview reads stored data only and does not create Runs/Bets, place wagers, refresh providers, or calculate P&L. Returned snapshots remain unchanged if stored selections later change. Demo provenance is null. Provider observation/provenance integration awaits the separately planned ingress implementation; no live-provider verification is claimed. Local configured frontend origins allow GET and POST with Content-Type, without credentials or wildcard origins.
+
+Backend tests include deterministic random selection, kickoff boundaries, paired-market validation, shared strategy persistence/bootstrap, PostgreSQL constraints and migration drift, exact snapshots, request validation, sanitized failures, POST preflight and no-write preview checks. The slice 2 UI and full selection-to-render browser test remain frontend work.
+
+### Random Strategy in the Games page
+
+After migrations, demo seeding and the explicit strategy bootstrap above, start the backend and frontend with the documented API base URL and allowed CORS origin. Select eligible game checkboxes, then click **Execute Random Strategy**. The page shows one decision per eligible game with exact saved odds, or a reason for each skipped game. Changing selection clears the preview. Execution checks kickoff on the server and records no bets or runs.
+
+Frontend validation (from `frontend/`):
+
+```sh
+npm run build
+TEST_FRONTEND_PORT=5176 npm test
+LIVE_API=1 TEST_API_BASE_URL=http://127.0.0.1:8000 TEST_FRONTEND_PORT=5176 npm test -- strategies-live
+```
+
+For live tests, allow `http://127.0.0.1:5176` in backend `CORS_ORIGINS`, and provide the seeded demo games and baseline strategy. The live suite exercises desktop/mobile selection, execution and exact stored-value parity. Provider Refresh integration remains separate.
