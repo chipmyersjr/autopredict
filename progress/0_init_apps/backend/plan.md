@@ -1,16 +1,16 @@
 # Epic 0 — Initialize the backend
 
-Area status: `not_started`
+Area status: `complete`
 
 ## Objective and design references
 
 Stand up a minimal FastAPI application with a health endpoint and a reproducible local development setup. Prepare PostgreSQL connectivity for the first games-and-spreads slice without implementing domain models yet.
 
 Governing design:
-- [MVP proposal](../../../../design/1_mvp.html), sections 4 (data), 7 (stack and local development), 9 (vertical slices), and 11 (local setup criteria).
-- [MVP ERD](../../../../design/2_mvp_erd.png), for future schema context only; no domain tables in this epic.
+- [MVP proposal](../../../design/1_mvp.html), sections 4 (data), 7 (stack and local development), 9 (vertical slices), and 11 (local setup criteria).
+- [MVP ERD](../../../design/2_mvp_erd.png), for future schema context only; no domain tables in this epic.
 
-This loop is planning only. Implementation tasks remain unchecked until executed and validated.
+Implementation tasks remain unchecked until executed and validated.
 
 ## Implementation decisions
 
@@ -33,45 +33,45 @@ Database connections are lazy so database downtime does not prevent application 
 
 ## Reviewable tasks
 
-- [ ] BE-01 — Bootstrap the Python application
-  - Status: `not_started`
+- [x] BE-01 — Bootstrap the Python application
+  - Status: `complete`
   - Scope: Add `backend/pyproject.toml`, dependency lockfile, supported Python version, and minimal `backend/app/` package with an importable FastAPI application. Add necessary ignore rules for virtual environments, caches, and local secrets.
   - Dependencies: None.
   - Acceptance criteria: A fresh dependency sync succeeds; the server starts from `backend/`; `/docs` loads. No frontend or domain functionality is introduced.
   - Validation: Sync dependencies and start the development server; request `/docs`.
-  - Completion notes: Pending.
+  - Completion notes: Added `backend/pyproject.toml`, `backend/uv.lock`, `backend/.python-version`, `backend/app/__init__.py`, and `backend/app/main.py`; added root `.gitignore` and backend setup instructions in README. Python support is 3.12. Fresh `uv sync` downloaded Python 3.12.14 and installed dependencies; `uv sync --locked --offline` passed. `fastapi dev` resolved `app.main:app`, started with hot reload, and `/docs` returned HTTP 200. Server stopped after verification. Local server startup and requests required sandbox escalation. No database or domain functionality added.
 
-- [ ] BE-02 — Add process health
-  - Status: `not_started`
+- [x] BE-02 — Add process health
+  - Status: `complete`
   - Scope: Implement `GET /api/health` with the contract above and a focused pytest test using FastAPI's test client.
   - Dependencies: BE-01.
   - Acceptance criteria: Endpoint returns the exact HTTP status and JSON contract without requiring a running database.
   - Validation: Run the endpoint test without PostgreSQL; smoke-check the running server with `curl`.
-  - Completion notes: Pending.
+  - Completion notes: Added `/api/health` in `backend/app/main.py`, test in `backend/tests/test_health.py`, pytest development dependency and configuration in `backend/pyproject.toml`, updated lockfile, and README health/testing instructions. pytest passed (1 test) without database configuration or services; live curl on port 8001 returned HTTP 200 and `{"status":"ok"}`. Test client emitted an upstream httpx deprecation warning; no test failures. Smoke-test server stopped afterward.
 
-- [ ] BE-03 — Provision local PostgreSQL
-  - Status: `not_started`
+- [x] BE-03 — Provision local PostgreSQL
+  - Status: `complete`
   - Scope: Add a PostgreSQL Compose service with an explicit supported image version, named data volume, health check, configurable host port, and local development credentials from environment configuration. Add root `.env.example`.
   - Dependencies: None.
   - Acceptance criteria: `docker compose up -d db` starts a healthy database; data survives an ordinary container restart; example configuration contains no real secrets. No domain schema is created.
   - Validation: Validate Compose configuration, start the service, inspect health, execute `SELECT 1`, and confirm the named volume is mounted. Do not delete volumes during verification.
-  - Completion notes: Pending.
+  - Completion notes: Added root `docker-compose.yml` and `.env.example`; created ignored local `.env`. PostgreSQL 17 passed Compose validation and health checks, `SELECT 1`, named-volume inspection, and a persistence-marker check across restart. Public schema has zero domain tables. Database remains running for local development.
 
-- [ ] BE-04 — Wire database configuration and readiness
-  - Status: `not_started`
+- [x] BE-04 — Wire database configuration and readiness
+  - Status: `complete`
   - Scope: Add validated settings, SQLAlchemy engine configuration, and `GET /api/ready`. Load root environment configuration consistently from the documented working directory; release engine resources at shutdown.
   - Dependencies: BE-01, BE-03.
   - Acceptance criteria: Readiness succeeds against local PostgreSQL and returns the failure contract within a bounded timeout when the database is unavailable. `/api/health` continues to succeed in that condition. Connections are released and errors do not expose secrets.
   - Validation: Focused tests for success and database-error handling, plus real PostgreSQL smoke checks for available and unavailable database configurations.
-  - Completion notes: Pending.
+  - Completion notes: Added `backend/app/settings.py` and `backend/app/database.py`; wired lazy engine lifecycle and `/api/ready` in `backend/app/main.py`; updated dependencies and lockfile. Tests cover success, failure response sanitization, connection/engine cleanup, and settings. Live readiness returned 200, then 503 with PostgreSQL stopped (0.0014 seconds), then 200 after recovery; health stayed 200. Startup with an unavailable database port also passed. Smoke-test server stopped; existing user server on port 8000 was left alone.
 
-- [ ] BE-05 — Document and verify the complete startup path
-  - Status: `not_started`
+- [x] BE-05 — Document and verify the complete startup path
+  - Status: `complete`
   - Scope: Update root README with prerequisites, `.env` setup, database startup, backend dependency sync and launch, endpoint URLs, test commands, and shutdown instructions. Include how to run health-only without Docker and explain that readiness will fail until PostgreSQL is available.
   - Dependencies: BE-02, BE-04.
   - Acceptance criteria: Following the README yields a running backend, healthy database, passing health/readiness requests, and passing backend tests. Document that ordinary shutdown preserves database data.
   - Validation: Follow the documented commands from their stated directories, run `uv run pytest` from `backend/`, and record actual smoke-check results. Record any environment limitations rather than claiming unperformed checks passed.
-  - Completion notes: Pending.
+  - Completion notes: Rewrote README with prerequisites, uv installation and PATH troubleshooting, shared environment setup, database/backend launch, health-only operation, API requests, tests, and data-preserving shutdown. Verified locked sync, uv-run pytest (6 passed), local development startup, live health/readiness/docs, database outage/recovery, and Compose health. Temporary uv binary used because uv is still absent from the laptop PATH. Upstream httpx test-client deprecation warning remains.
 
 ## Epic acceptance criteria
 
@@ -83,6 +83,29 @@ Database connections are lazy so database downtime does not prevent application 
 - No games, strategies, bets, settlement, frontend implementation, or production deployment work is included.
 
 ## Loop log
+
+### 2026-09-30 — BE-03, BE-04, BE-05 implementation
+
+- Completed task IDs: BE-03, BE-04, BE-05. Backend epic complete; frontend remains not applicable for this loop.
+- Validation: Compose config valid; PostgreSQL healthy; SELECT 1 succeeded; named-volume marker survived restart; zero public domain tables. Locked dependency sync passed; 6 tests passed. Live health/docs returned 200; readiness returned 200/503/200 across database stop/recovery. Startup without reachable database passed. Environment and virtual environment are ignored. Local API smoke checks used port 8001 to avoid the user's server.
+- Limitations: Upstream httpx deprecation warning remains. uv used from a temporary installation; README describes permanent installation. Docker required its credential-helper directory on PATH during image download.
+- Blockers: None.
+- Next steps: Backend initialization is complete; next epic is the games-and-spreads vertical slice when requested. PostgreSQL is left running; verification API stopped.
+
+### 2026-09-30 — BE-02 implementation
+
+- Completed task IDs: BE-02.
+- Validation: 1 pytest test passed without PostgreSQL; live development server returned the exact health JSON and HTTP 200. Port 8001 was used for the isolated smoke check; documented default remains 8000.
+- Blockers: None. Upstream test-client httpx deprecation warning recorded; current test passes.
+- Next step: BE-03 — Provision local PostgreSQL.
+
+### 2026-09-30 — BE-01 implementation
+
+- Completed task IDs: BE-01.
+- Validation: Fresh dependency sync and locked offline sync passed; development server started from `backend/`; live `/docs` request returned HTTP 200; `git diff --check` passed.
+- Blockers: None. uv was absent from the laptop's PATH; a temporary uv installation under `/private/tmp` was used for verification. Install uv as documented in README for ordinary development.
+- Next step: BE-02 — Add process health. Remaining epic tasks are not started.
+- Plan maintenance: Corrected design reference paths following removal of the `epics/` directory.
 
 ### 2026-09-30 — Planning
 
