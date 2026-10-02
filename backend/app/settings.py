@@ -1,8 +1,9 @@
 """Shared local environment configuration, independent of working directory."""
 
 from pathlib import Path
+from urllib.parse import urlsplit
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
 
@@ -18,6 +19,17 @@ class Settings(BaseSettings):
     postgres_host: str = Field(default="127.0.0.1", min_length=1)
     postgres_port: int = Field(default=5432, ge=1, le=65535)
     db_connect_timeout: int = Field(default=3, ge=2, le=10)
+
+    cors_origins: list[str] = ["http://127.0.0.1:5173", "http://localhost:5173"]
+
+    @field_validator("cors_origins")
+    @classmethod
+    def validate_cors_origins(cls, origins: list[str]) -> list[str]:
+        for origin in origins:
+            url = urlsplit(origin)
+            if url.scheme not in {"http", "https"} or not url.hostname or url.path or url.query or url.fragment or url.username or url.password or "*" in origin:
+                raise ValueError("CORS origins must be explicit HTTP(S) origins without paths or credentials")
+        return origins
 
     @property
     def database_url(self) -> URL:
