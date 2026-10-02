@@ -21,8 +21,8 @@ pytestmark = pytest.mark.skipif(
 def test_schema_and_migration_cycle(migrated_database):
     engine, config = migrated_database
     inspector = inspect(engine)
-    assert set(inspector.get_table_names()) == {"alembic_version", "games", "markets", "selections"}
-    for table in ("games", "markets", "selections"):
+    assert set(inspector.get_table_names()) == {"alembic_version", "games", "markets", "selections", "strategies"}
+    for table in ("games", "markets", "selections", "strategies"):
         columns = {c["name"]: c for c in inspector.get_columns(table)}
         assert str(columns["id"]["type"]) == "UUID"
         assert inspector.get_pk_constraint(table)["constrained_columns"] == ["id"]
@@ -45,7 +45,7 @@ def test_schema_and_migration_cycle(migrated_database):
     assert inspect(engine).get_table_names() == ["alembic_version"]
     command.upgrade(config, "head")
     command.check(config)
-    assert set(inspect(engine).get_table_names()) == {"alembic_version", "games", "markets", "selections"}
+    assert set(inspect(engine).get_table_names()) == {"alembic_version", "games", "markets", "selections", "strategies"}
 
 
 def test_relationships_values_and_constraints(migrated_database):

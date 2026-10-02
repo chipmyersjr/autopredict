@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, Numeric, String, Text, Uuid, func, true
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.dialects.postgresql import JSONB
 
 
 class Base(DeclarativeBase):
@@ -67,3 +68,19 @@ class Selection(Timestamps, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=true(), default=True)
     notes: Mapped[str | None] = mapped_column(Text)
     market: Mapped[Market] = relationship(back_populates="selections")
+
+
+class Strategy(Timestamps, Base):
+    __tablename__ = "strategies"
+    __table_args__ = (
+        CheckConstraint("type = 'random'", name="ck_strategies_type"),
+        CheckConstraint("length(trim(name)) > 0", name="ck_strategies_name"),
+        CheckConstraint("config IS NULL OR config = '{}'::jsonb", name="ck_strategies_config"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(255))
+    type: Mapped[str] = mapped_column(String(100))
+    description: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default=true(), default=True)
+    config: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True))
