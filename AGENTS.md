@@ -5,15 +5,18 @@ These instructions apply to the entire repository. Read them before planning or 
 ## Design authority
 
 - `design/` is the ultimate source of truth for product requirements, scope, architecture, and intended behavior.
-- CHIP, the project creator, exclusively maintains `design/`. Agents must not create, edit, rename, or delete files in that directory.
+- CHIP, the project creator, controls `design/`. Agents may create, edit, rename, or delete design files when CHIP explicitly requests or authorizes those changes while collaborating with them. Agents must not change `design/` on their own initiative. Keep authorized changes within the scope CHIP requested; ordinary implementation work does not authorize design changes.
 - Only a subsequent document in `design/` can supersede a requirement in an existing design document. Apply the newer document to the requirements it changes; retain the remaining requirements from the earlier documents.
 - Agent plans, implementation choices, code, and progress notes cannot override design requirements.
+- Keep design documents only in `design/`. Do not create or retain duplicate design proposals, drafts, snapshots, or outdated versions in `progress/` or elsewhere in the repository. When CHIP authorizes a design update, edit the designated document directly; use version control for history. If design-edit authorization is missing, discuss the proposal in chat rather than saving a parallel design document.
 - Read the relevant design documents before planning each epic or implementing its tasks. If document order or conflicting requirements are ambiguous, ask CHIP rather than inventing precedence.
 - If requested work conflicts with the design, identify the conflict and ask CHIP to resolve it through a subsequent design document before implementing the conflicting behavior. Continue independent work that remains consistent with the design.
 
 ## Agent planning area
 
 - `progress/` is the agent-maintained area for plans, execution notes, and completion tracking.
+- Name epic directories `progress/<design-number>_<part-number>_<descriptive-name>/`. The first number identifies the primary governing design document; the second identifies a stable implementation part within that design. For example, `1_1_mvp_vertical_slice_1` is part 1 of `design/1_mvp.html`, later MVP parts use `1_2_...`, `1_3_...`, and the first ingress part is `3_1_game_info_ingress` under `design/3_game_info_ingress.html`. Start part numbers at 1, reuse existing parts, and do not renumber them when their status changes. Keep the existing `0_init_apps` bootstrap directory as a legacy exception. Plans may reference additional governing design documents.
+- Plans and execution notes must reference the governing documents in `design/` rather than copy them. They may record implementation details and validation evidence, but must not serve as alternate product design documents.
 - For each epic, maintain both of these plans:
   - `progress/<epic>/backend/plan.md`
   - `progress/<epic>/front_end/plan.md`

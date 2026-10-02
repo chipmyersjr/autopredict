@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>College Football Game Data — Ingress Strategy Proposal</title>
+<style>
+:root{color-scheme:light;--ink:#1f2937;--muted:#64748b;--line:#dbe3ec;--accent:#2563eb}
+*{box-sizing:border-box}body{margin:0;background:#f7f8fa;color:var(--ink);font:16px/1.6 system-ui,sans-serif}main{max-width:1080px;margin:auto;padding:40px 24px 64px}header,section{background:white;border:1px solid var(--line);border-radius:12px;padding:24px;margin-bottom:20px}h1{line-height:1.2;margin:0 0 12px}h2{margin-top:0}h3{margin-bottom:8px}a{color:var(--accent)}small,.muted{color:var(--muted)}.callout{background:#eff6ff;border-left:4px solid var(--accent);padding:14px 18px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{border:1px solid var(--line);padding:12px;text-align:left;vertical-align:top}th{background:#f1f5f9}code{background:#f1f5f9;padding:2px 4px}pre{white-space:pre-wrap;background:#0f172a;color:#f8fafc;padding:18px;border-radius:8px}li{margin:7px 0}
+</style>
+</head>
+<body><main>
+<header><h1>College Football Game Data Ingress</h1><p class="muted">Revised proposal · September 30, 2026 · Free APIs and on-demand refresh</p>
+<div class="callout"><strong>Selected direction:</strong> Use free CFBD access for games and results, and free The Odds API access for current spreads and prices. The Games page refreshes the current Monday–Sunday window only when the user clicks <strong>Refresh</strong>.</div>
+<p>Prioritize upcoming FBS games and keep completed games visible through Sunday for reviewing results. No scheduled ingestion or automatic page-load refresh. No paid subscriptions or historical-odds purchase.</p>
+<p>This subsequent document refines <a href="1_mvp.html">the MVP design</a> to FBS coverage and on-demand ingress. All other MVP requirements remain, including the <a href="2_mvp_erd.png">canonical domain</a>, dry-run execution, immutable bets, and eventual settlement. CHIP has accepted the defaults below. This document is the implementation direction; implementation progress is tracked in the sibling backend and front_end plans.</p></header>
+
+<section><h2>1. The two sources</h2><div class="table-wrap"><table>
+<tr><th>Source</th><th>Role</th><th>Free-plan boundary</th></tr>
+<tr><td><a href="https://api.collegefootballdata.com/">CFBD</a></td><td>Game identity, teams, schedule, season/week, status, and final scores.</td><td>The <a href="https://collegefootballdata.com/api-tiers">published free tier</a> lists 1,000 calls/month. Use documented schedule/game results; do not depend on paid live-score endpoints.</td></tr>
+<tr><td><a href="https://the-odds-api.com/">The Odds API</a></td><td>Current full-game bookmaker spread lines and decimal prices for upcoming games.</td><td>The Starter plan lists 500 credits/month, all sports and markets, and most bookmakers. Historical odds are excluded. Use only data accessible to the free key.</td></tr>
+</table></div><p>API credentials remain server-side. Free-plan exhaustion stops external requests; it never triggers a purchase or an upgrade. Public documentation verification is complete for planning. Validate actual key access during ordinary implementation integration checks; no separate credentialed source spike is required.</p></section>
+
+<section><h2>2. What “current week” means</h2>
+<ul><li><strong>Accepted timezone:</strong> America/Los_Angeles. Use one configured application timezone for both the displayed window and weekly limiter, regardless of browser timezone.</li>
+<li>The window begins Monday at 00:00 and ends immediately before the following Monday at 00:00 in that timezone. Convert those calendar boundaries to UTC for provider queries and storage; handle daylight-saving changes using timezone rules, not a fixed 168-hour interval.</li>
+<li>Example: Wednesday September 30, 2026 shows September 28–October 4. Refresh on Sunday October 4 still retrieves that week’s schedule/results. On Monday October 5, the current window changes to October 5–11.</li>
+<li>The application calendar window is separate from CFBD’s football season/week numbering. Preserve provider season/week and season type; never infer a football week number from the Monday date.</li>
+<li><strong>Accepted FBS scope:</strong> Both participating teams must be classified FBS for the relevant season. Exclude FBS-versus-FCS games. Verify both teams rather than assuming a provider’s FBS filter guarantees this.</li>
+<li>Include scheduled, running, completed, and canceled games in the window. Only upcoming games offer new spread selections. Sunday refresh updates final scores when CFBD has published them; it does not guarantee immediate provider finalization.</li>
+<li>Window membership follows the latest confirmed kickoff. Retain stored games and bet history when a game moves out of the window. An unknown kickoff is held for review rather than assigned a fictional time.</li></ul>
+<p>After Monday rollover, previously imported games and results remain stored and accessible through game/run history. No automatic catch-up occurs for an unrefreshed prior week; refreshing prior weeks is outside this initial current-week flow.</p></section>
+
+<section><h2>3. Games-page Refresh flow</h2>
+<pre>Games page displays stored current-week games
+                 ↓ user clicks Refresh
+Backend establishes week boundaries and reserves quota
+                 ↓
+CFBD games/results → validate and persist
+                 ↓
+The Odds API current spreads → match and persist
+                 ↓
+Updated games + last refresh + remaining refreshes + outcome</pre>
+<ol><li>Opening the page reads PostgreSQL only. Show an empty-state prompt to refresh when no current-week games are stored.</li>
+<li>Refresh is an explicit backend write operation; the frontend never calls providers directly. The server calculates the current window and enforces limits across all tabs/users sharing the provider keys.</li>
+<li>Resolve overlapping football weeks from CFBD’s season calendar, then request explicit schedule windows by year, seasonType, and week. Filter returned games to the exact Pacific Monday–Sunday kickoff range and require both teams FBS. Cache calendars by season; refresh calendar metadata only within a user-triggered refresh when needed. Count every metadata and schedule request against the provider budget. Preserve provider status and final scores; do not infer completion from the clock.</li>
+<li>Request The Odds API NCAAF spreads for the window using one US region and decimal odds. Filter locally to mapped FBS games and upcoming kickoffs. Skip the odds call if no eligible upcoming games remain, so Sunday results-only refresh does not spend odds credits unnecessarily.</li>
+<li>Validate and commit each provider stage independently. If games succeed but odds fail, retain updated games and the prior odds observation, and clearly report the partial result. Never report “all refreshed” for a partial run.</li>
+<li>Return a bounded synchronous response for this small slice. Record the run before requesting data. A tab closing or response timing out must not allow a duplicate concurrent run; recover the recorded run server-side on the next request. No worker queue or scheduled job is required.</li></ol>
+<p>Planned API addition: <code>POST /api/games/refresh</code> with no caller-selected week. Use <code>GET /api/games?window=current</code> for stored current-week games; preserve unfiltered GET behavior for existing callers. No separate refresh-status endpoint or status dashboard is required.</p></section>
+
+<section><h2>4. Weekly application limits and provider limits</h2>
+<p>Our weekly limit controls button usage. Provider allowances are monthly and do not reset just because our calendar week changes. Both must pass before spending API credits.</p>
+<div class="table-wrap"><table>
+<tr><th>Control</th><th>Accepted default / behavior</th></tr>
+<tr><td>Application weekly budget</td><td>20 external refresh attempts per Monday–Sunday window, shared across the deployment. An accepted refresh that starts provider work consumes one attempt even if a provider later fails. Requests blocked before any external call do not consume an attempt.</td></tr>
+<tr><td>Click protection</td><td>One active refresh at a time and a 60-second cooldown between accepted attempts. Disabled UI plus transactional server enforcement; browser disabling alone is insufficient.</td></tr>
+<tr><td>Sunday result access</td><td>Reserve 2 of the 20 attempts for Sunday. Before Sunday, stop after 18. Sunday can use any remaining attempts. Explain the Sunday reservation in the popup when it blocks a refresh.</td></tr>
+<tr><td>Provider budgets</td><td>Track each provider separately, conservatively reserving estimated cost before each call. For Odds API read actual remaining/used/last-cost headers; for CFBD use exposed quota metadata where available plus a local call ledger. External use of shared keys can exhaust quotas earlier.</td></tr>
+<tr><td>Monthly reserve</td><td>Accepted 10% safety reserve: target at most 450 Odds API credits and 900 CFBD calls per provider billing period. Reserve is a safety margin, not a guarantee of Sunday access if the provider allowance is exhausted.</td></tr>
+<tr><td>Provider reset / temporary throttling</td><td>Persist known reset times and Retry-After when supplied. If reset timing is not known, say so; never invent a date. A temporary provider rate limit differs from monthly credit exhaustion.</td></tr>
+</table></div>
+<p>With at most 20 attempts per week, a calendar month touches at most six application weeks: at most 120 attempts within that month. With one region and one market, a normal odds call costs one credit. The estimate leaves room below the free 500-credit allowance; CFBD batch counts, extra metadata calls, and uncertain request outcomes still need measurement. No automatic retries in the first version: show the failure and allow another deliberate click after cooldown, charging/reserving it separately.</p>
+<p>Use durable PostgreSQL counters/reservations so restarts, concurrent requests, and HTTP timeouts cannot reset or overspend the budget. Unknown provider-call outcomes remain conservatively charged. Weekly reset creates a new week bucket lazily on access; no midnight job is needed. Monthly accounting follows each provider’s own quota period, not the weekly application clock.</p>
+<h3>Informative messages</h3><ul>
+<li><strong>Weekly limit:</strong> “You’ve used all 20 refreshes for September 28–October 4. Refresh is available again Monday October 5 at 12:00 AM Pacific. Saved data remains available.”</li>
+<li><strong>Sunday reserve:</strong> “You’ve used 18 refreshes. Your remaining 2 refreshes are available Sunday so you can update this week’s results.”</li>
+<li><strong>Provider quota:</strong> “The Odds API free allowance is exhausted. Games/results were updated from CFBD; spreads remain from the last successful refresh. Provider reset: [known time, or ‘not yet known’].”</li>
+<li><strong>Cooldown:</strong> “Refreshed recently. Try again in 42 seconds.”</li>
+<li><strong>Partial refresh:</strong> “Games updated; odds could not be refreshed. Last odds update: [time].”</li></ul>
+<p>Include a machine-readable reason, retry availability, per-provider outcome, and last-success times. Limit failures retain readable stored data. Missing credentials and authentication failures receive a configuration message rather than misleading quota wording. A provider budget exhausted for one stage need not block the other stage if it can still update data.</p></section>
+
+<section><h2>5. Automatically choose a free-access bookmaker</h2>
+<p>A bookmaker is the sportsbook whose spread and price appears in the feed. The free API can include several; no separate bookmaker subscription is required for this dry-run simulator. CHIP does not need to choose one.</p>
+<p><strong>Accepted automatic rule:</strong> For each game, keep its previously selected bookmaker if it still supplies a valid paired spread in the current free-key response. Otherwise choose the available valid bookmaker with the lexicographically smallest stable provider key. This is deterministic rather than dependent on response ordering. Record the bookmaker with each observation, including when it changes.</p>
+<ul><li>Select both teams’ prices and opposite handicap lines from the same full-game bookmaker market and observation. Never mix books or manufacture a missing price.</li>
+<li>There is no “best price” shopping or averaging across books. If none has a valid pair, show “Spread unavailable” while retaining the game.</li>
+<li>Use a single US region and one spread market to bound request cost. Choose only bookmakers present in the free-key response; no fixed bookmaker entitlement is assumed.</li></ul>
+<p>The <a href="https://the-odds-api.com/liveapi/guides/v4/">official API documentation</a> defines odds parameters, bookmaker identity, outcome points/prices, and usage headers.</p></section>
+
+<section><h2>6. Stored snapshots, identity, and results</h2>
+<ul><li>Keep canonical UUIDs and provider-event mappings outside the domain. CFBD owns canonical teams, season/week, kickoff, and results. Match Odds API events using explicit team aliases, participants, and kickoff proximity; require a unique match. Unknown or conflicting matches are flagged rather than guessed. Follow established provider IDs through rescheduling.</li>
+<li>Validate required fields and source statuses. Store neutral-site/season-type/provider-state metadata. Quarantine unknown kickoff/week/status values that cannot fit the current schema; a future schema extension must be explicit.</li>
+<li>Parse price and line using Decimal and preserve current schema precision: line two decimal places, decimal price four, with documented rounding. Require finite prices greater than one and exactly two matching teams with opposite lines, including zero.</li>
+<li>Persist current Game → Market → Selection projections and an auditable quote observation containing bookmaker, source timestamp if supplied, and fetch time. Commit paired selections atomically; reject older observations overwriting newer ones. A successful scoped response lacking a usable quote removes current availability without deleting prior observations.</li>
+<li><strong>On-demand snapshot policy:</strong> Remove the previously proposed 30-minute expiry. Stored valid pregame quotes remain usable for theoretical simulation until kickoff or explicit invalidation. Keep fetch time and bookmaker in stored quote provenance; these are saved observations, not a promise of a live executable price. Refresh failure preserves the prior quote and displays the failure.</li>
+<li>At kickoff, selections become unavailable for new bets based on current server time even without a refresh. A game can remain “scheduled” in stored source state until the next refresh; the UI must not imply that this stale status means it is still upcoming.</li>
+<li>Bet creation later rechecks known kickoff, game/market/selection eligibility and snapshots line, price, stake, and quote provenance. Existing bets never change when refreshed selections change.</li>
+<li>Completion requires explicit final confirmation and both scores, not elapsed time alone. Score corrections are audited. Later settlement design determines how to correct settled outcomes; canceled/postponed games block new decisions.</li></ul>
+<p>Preserve run outcomes, quota ledgers, identity maps, normalized observations, and result-change audit records. Raw full-response retention is not required in this MVP proposal; choose it separately if necessary for debugging. Existing demo data stays clearly labeled and is never matched onto real provider games.</p></section>
+
+<section><h2>7. Simple Games-page Refresh button</h2>
+<p>Add one <strong>Refresh</strong> button to the Games page. Disable it while its request is in flight. On completion, show one popup and reload the stored current-week games if any data changed. No quota panel, status dashboard, separate status request, or additional refresh controls.</p>
+<ul><li><strong>Success:</strong> “Refresh successful. 17 refreshes remaining this week.” Count includes any Sunday-reserved attempts; if relevant append “2 are reserved until Sunday.”</li>
+<li><strong>Failure:</strong> “Refresh failed: [useful reason]. [Remaining refreshes and retry timing when known].” Include cooldown, weekly/Sunday restriction, exhausted provider allowance, configuration failure, timeout, or partial update details.</li>
+<li><strong>Partial failure:</strong> “Refresh failed to update odds; games/results were updated. Saved odds were kept. 17 refreshes remaining this week.” Do not erase successful changes or show full success.</li>
+<li><strong>Empty week:</strong> A successful refresh with no FBS games is success, with “No FBS games this week.” Do not query odds when there are no eligible upcoming games.</li></ul>
+<p>Keep the existing Games page simple. The backend filters the current window, preserves saved quote provenance, and enforces kickoff eligibility. A price is the saved provider observation rather than a live-price guarantee. Completed games show scores; run settlement and P&amp;L remain separate MVP work.</p>
+<h3>Backend response contract</h3>
+<p>The refresh response uses a single envelope: <code>success</code> (boolean), <code>reason</code> (stable code), <code>message</code> (safe popup text), <code>remaining_refreshes</code> (integer or null if database state is unavailable), <code>reserved_for_sunday</code>, <code>retry_at</code> (UTC timestamp or null), <code>data_changed</code>, and <code>run_id</code> (UUID or null). Backend audit records retain stage counts and outcomes without putting implementation details in the popup.</p>
+<p>HTTP 200 for a finished run (success true for full success, false for partial/failure); 429 for weekly/cooldown/provider-budget rejection before work; 409 for an already active refresh; 503 for database unavailability; 422 for invalid query/body input. All handled refresh errors use the envelope. A transport error without an envelope shows a generic failure popup. A rate-limit result reports remaining attempts even if reserved; provider monthly reset and application weekly retry are distinct.</p></section>
+
+<section><h2>8. Verified documentation and implementation plan</h2>
+<p><strong>Accepted by CHIP:</strong> Pacific week boundaries; both teams FBS; 20 attempts/week with 2 reserved until Sunday; 60-second cooldown; 10% provider reserve; deterministic automatic bookmaker selection. The free dual-source, upcoming-game, on-demand direction is settled.</p>
+<div class="table-wrap"><table>
+<tr><th>Public documentation checked September 30, 2026</th><th>Implementation consequence</th></tr>
+<tr><td><a href="https://apinext.collegefootballdata.com/api/games">CFBD games reference</a> documents /calendar, explicit /games/schedule windows, and /games classifications and final-score fields.</td><td>Use football calendar windows to request data, then apply our own week/FBS filter. Provider “active or next” selection alone must not change our Sunday window.</td></tr>
+<tr><td><a href="https://apinext.collegefootballdata.com/api/info">CFBD account reference</a> exposes allowance, remaining calls, and reset metadata.</td><td>Read account information only within an allowed Refresh when needed; charge its requests conservatively. Maintain a local ledger too.</td></tr>
+<tr><td><a href="https://the-odds-api.com/">The Odds API Starter plan</a> and <a href="https://the-odds-api.com/liveapi/guides/v4/">v4 reference</a> document free current odds, region/market costing, decimal format, date filters, and quota headers.</td><td>Use one NCAAF spread request per refresh where needed. The free tier does not include historical odds.</td></tr>
+<tr><td><a href="https://the-odds-api.com/manage/faqs.html">The Odds API FAQ</a> states credits reset on the first of each month.</td><td>Do not treat Monday as an API reset. Do not invent a reset hour/timezone absent authoritative account metadata.</td></tr>
+</table></div>
+<p>Web research establishes the documented contract; it cannot establish actual account access, current response contents, or result-publication latency. Those are normal integration checks when keys are configured, not a separate planning prerequisite. If the free key lacks a required feature, record the gap and retain saved data; do not pay or silently substitute fabricated data.</p>
+<ol><li><strong>Persistence and configuration:</strong> Add integration mappings, alias resolution, quote observations, result audit records, refresh runs, and durable quota state through a new migration. Keep existing canonical IDs and decimal conventions.</li>
+<li><strong>Limits and provider clients:</strong> Implement Pacific window logic, atomic weekly reservations, provider ledgers, exclusive refresh ownership, timeouts, credential redaction, and documented free endpoints.</li>
+<li><strong>Game and odds imports:</strong> Implement idempotent updates, explicit status mapping, strict FBS/date filtering, unique cross-feed matching, paired odds validation, and automatic bookmaker selection.</li>
+<li><strong>Refresh orchestration and API:</strong> Combine stages, persist partial outcomes, release ownership safely, and return the simple popup envelope. Add stored-data current-week filtering.</li>
+<li><strong>Validation and frontend handoff:</strong> Verify PostgreSQL concurrency/restart behavior, Sunday/Monday/DST boundaries, monthly quota persistence, partial results, matching, and kickoff lockout. Frontend adds only the button, request state, and popup.</li></ol>
+<p>Detailed tasks, dependencies, acceptance criteria, and validation are in <a href="../progress/3_1_game_info_ingress/backend/plan.md">the backend plan</a> and <a href="../progress/3_1_game_info_ingress/front_end/plan.md">the front_end plan</a>. No application implementation is included in this design/planning revision.</p></section>
+</main></body></html>
