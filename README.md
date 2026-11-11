@@ -10,6 +10,8 @@ Open Docker Desktop, then run Make commands from the repository root:
 make build
 ```
 
+To use a private settings file outside the project, run `export ENV_FILE="$HOME/.config/autopredict/runtime.env"` in your terminal before using Make. All Make commands use that file; without the override they use the local development `.env`.
+
 | Command | What it does |
 | --- | --- |
 | `make build` / `make up` | Build images, start PostgreSQL, apply migrations, seed demo data, and start both apps. |
