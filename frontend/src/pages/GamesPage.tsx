@@ -3,12 +3,11 @@ import { getGames } from '../api/games'
 import { getStrategies, previewDecisions } from '../api/strategies'
 import type { Strategy, Preview } from '../api/strategies'
 import type { Game } from '../api/games'
+import DryRunForm from '../components/DryRunForm'
 
-export function formatLine(line: string): string {
-  if (/^[+-]?0+(\.0+)?$/.test(line)) return 'Pick’em'
-  const trimmed = line.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '')
-  return trimmed.startsWith('-') || trimmed.startsWith('+') ? trimmed : `+${trimmed}`
-}
+import { formatLine } from '../format'
+export { formatLine } from '../format'
+
 const kickoffFormat = new Intl.DateTimeFormat(undefined, {
   weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
   hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
@@ -132,7 +131,7 @@ export default function GamesPage() {
         <p>Preview one randomly chosen spread per eligible game. The server checks eligibility when you execute.</p>
         {strategyError ? <><p role="alert">Strategies couldn’t be loaded.</p><button onClick={() => setStrategyAttempt(n => n + 1)}>Retry strategies</button></> : strategies === null ? <p>Loading strategy…</p> : !strategy ? <p>Random Strategy unavailable</p> : !strategy.is_active ? <p>Random Strategy inactive</p> : null}
         <p>{selected.length} games selected</p>
-        <button disabled={!selected.length || !strategy?.is_active || busy} onClick={execute}>{busy ? 'Generating decisions…' : 'Execute Random Strategy'}</button>
+        <button disabled={!selected.length || !strategy?.is_active || busy} onClick={execute}>{busy ? 'Generating decisions…' : 'Preview decisions'}</button>
         {error && <p role="alert">{error}</p>}
         <div aria-live="polite">{busy && <p>Generating decision preview…</p>}</div>
         {preview && <section className="decision-results" aria-label="Decision preview">
@@ -147,6 +146,7 @@ export default function GamesPage() {
           <ul>{preview.skipped_games.map(skip => <li key={skip.game_id}>{state.games.find(g => g.id === skip.game_id)?.away_team} at {state.games.find(g => g.id === skip.game_id)?.home_team}: {{ game_not_scheduled: 'Game is not scheduled', kickoff_reached: 'Kickoff reached', spread_unavailable: 'Spread unavailable' }[skip.reason]}</li>)}</ul>
         </section>}
       </section>}
+      <DryRunForm selected={selected} strategyId={strategy?.id} enabled={Boolean(strategy?.is_active)} />
       {state.status === 'success' && (state.games.length === 0
         ? <div className="state-panel"><h2>No games stored yet</h2><p>Games will appear here when data is available.</p></div>
         : <ul className="games-list">{state.games.map(game => <li key={game.id}><GameCard game={game} selected={selected.includes(game.id)} toggle={() => toggle(game.id)} now={now} /></li>)}</ul>)}

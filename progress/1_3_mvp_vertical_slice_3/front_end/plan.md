@@ -1,8 +1,8 @@
 # Design 1, part 3 — Dry Run Bets frontend
 
-Area status: `not_started`
+Area status: `complete`
 
-Planning status: final implementation plan; implementation is not requested in this loop.
+Planning status: settled implementation contract; frontend implementation authorized October 2, 2026.
 
 ## Objective and governing design
 
@@ -37,37 +37,37 @@ Add simple Games/Runs navigation using hash routes (`#/games`, `#/runs`, `#/runs
 
 ## Tasks
 
-- [ ] FE-01 — Add typed Run/Bet clients and retry identity handling
-  - Status: not_started
+- [x] FE-01 — Add typed Run/Bet clients and retry identity handling
+  - Status: complete
   - Scope: Add Run/Bet request/read types and clients, Idempotency-Key support, safe error parsing, and session-persisted pending creation state using the settled backend contract.
   - Dependencies: Existing API infrastructure; backend BE-03 for live verification.
   - Acceptance criteria: Exact decimal strings/null values preserved; same-intent retries reuse key/body across reload; success clears pending state; malformed saved state is safely discarded; stale/aborted requests cannot overwrite current state.
   - Validation: Controlled API/browser tests for 201/200, errors, timeout/lost response, restored pending intent, key reuse and new-key creation after correction; verify POST preflight with the custom header when backend exists.
-  - Completion notes: Pending implementation and validation.
+  - Completion notes: Added typed `frontend/src/api/runs.ts`, safe allowlisted error messages, positive money parsing in exact BigInt cents, strict sessionStorage intent validation, UUID request identity and custom-header creation. `DryRunForm.tsx` retains original body/key on unknown transport outcomes and reload, blocks duplicate requests, and clears completed/definite-failure intents. Controlled browser tests cover restore/replay, correction/new keys, malformed state and unavailable storage; live PostgreSQL browser tests verify real response-loss replay and successful custom-header preflight.
 
-- [ ] FE-02 — Add Dry Run creation to selected games
-  - Status: not_started
+- [x] FE-02 — Add Dry Run creation to selected games
+  - Status: complete
   - Scope: Add bankroll/stake/name inputs and distinct creation action; connect selected games/shared strategy, disabled/in-flight state, authoritative errors and ambiguous-outcome recovery.
   - Dependencies: FE-01; backend BE-03 for live creation.
   - Acceptance criteria: Accessible labeled money inputs accept valid cents; invalid input cannot submit; browser sends IDs/settings only; duplicate clicks cannot create multiple intents; preview remains usable; creation success opens saved Run and skipped games are visible; transport failure recovery uses the original intent.
   - Validation: Browser interactions covering defaults, edits, positive/precision limits, budget rejection, inactive strategy, kickoff skips, all-skipped failure, duplicate clicks, lost response/retry, selection changes and keyboard/mobile operation.
-  - Completion notes: Pending implementation and validation.
+  - Completion notes: Implemented `frontend/src/components/DryRunForm.tsx` and Games integration with default exact decimal inputs, optional name, fresh UUID intents, in-flight protection, safe server errors, same-key recovery and explicit discard confirmation. Preview is labeled Preview decisions and remains independently usable. `runs.spec.ts` verifies invalid/overflow money, correction, server error reasons, actual 15-second timeout, lost-response reload/retry, unknown server outcomes, selection changes during creation, stale navigation, storage failure and keyboard operation. Live browser creation/recovery passed at 375px and 1280px.
 
-- [ ] FE-03 — Add Run history and immutable Bet inspection
-  - Status: not_started
+- [x] FE-03 — Add Run history and immutable Bet inspection
+  - Status: complete
   - Scope: Add hash navigation, Runs list and Run detail/Bets views, snapshot/provenance rendering, committed/available bankroll labels and unsettled states.
   - Dependencies: FE-01; backend BE-03 for live reads. Can proceed independently of FE-02.
   - Acceptance criteria: Reload/back/forward restores the intended Run; saved snapshots display even when current quotes or current-week Games differ; exact values and null outcome/metrics render honestly; no fresh decisions on reads; loading/empty/error/not-found recover; responsive keyboard-accessible views.
   - Validation: Controlled browser tests for navigation/reload, history ordering, skips, snapshot/current-data differences, zero/signed spreads, four-decimal prices, nullable metrics/provenance, malformed/unknown route IDs, stale reads, retry and mobile overflow.
-  - Completion notes: Pending implementation and validation.
+  - Completion notes: Implemented hash navigation in `frontend/src/App.tsx`, history/Run detail in `frontend/src/pages/RunsPage.tsx`, shared exact spread formatting in `frontend/src/format.ts`, and responsive styles. Detail uses stored Run and Bet APIs, renders saved participants/line/price/stake/provenance, nullable outcomes and accounting honestly, and has retry/empty/loading/not-found states. Controlled tests cover reload/back/forward, stale detail reads, error retry, skips, signed/zero lines, four-decimal odds, demo/provider provenance and keyboard links. Actual PostgreSQL quote/game mutation leaves reloaded snapshot display unchanged; desktop/mobile screenshots inspected without overflow.
 
-- [ ] FE-04 — Validate and document the complete saved-run flow
-  - Status: not_started
+- [x] FE-04 — Validate and document the complete saved-run flow
+  - Status: complete
   - Scope: Verify real Games → create → inspect → reload → history flow with dedicated PostgreSQL-backed demo data; document setup and test evidence.
   - Dependencies: FE-01–FE-03 and backend BE-03–BE-04.
   - Acceptance criteria: Persisted Run and Bet snapshots match server execution; same-key recovery returns one Run; reload retrieves the same Bets; changed current quotes do not alter historical values; earlier Games/preview regressions pass; no provider calls, settlement or realized P&L implied.
   - Validation: TypeScript/production build, relevant Playwright suite, live PostgreSQL-backed desktop/mobile smoke tests with exact snapshot parity and response-loss replay, keyboard use and screenshot inspection. Use dedicated data for quote mutation rather than editing existing development fixtures. Record ingress integration as unperformed if absent.
-  - Completion notes: Pending implementation and validation.
+  - Completion notes: Added controlled `frontend/tests/runs.spec.ts`, actual PostgreSQL browser acceptance in `runs-live.spec.ts`, safe disposable backend helper in `tests/support/live_backend.py`, and setup/recovery/validation documentation in `README.md`. Production TypeScript/Vite build passes. Standard browser suite: 41 passed, 5 live tests skipped; dedicated live earlier Games/preview run: 12 passed; saved-run mobile/desktop live run: 2 passed. Real committed-response loss/replay, single persisted Run, exact API/selection parity and post-mutation reload/history parity verified. Creation/detail screenshots at 375px and 1280px visually inspected and no horizontal overflow observed. Backend regression: 88 passed, including migration drift/cycle. Test server/database cleanup verified. Development fixtures were untouched; ingress/provider integration is unperformed because ingress is absent.
 
 ## Epic acceptance and execution order
 
@@ -81,3 +81,21 @@ FE-01 → FE-02/FE-03 → FE-04. Backend owns validation, randomness, transactio
 - Validation: Reviewed governing design, completed slice 2 UI/client and sibling backend contract. Aligned endpoints, exact decimals, local ownership, skip/budget semantics, request replay and unsettled labels. Runtime tests are not applicable to this planning-only change.
 - Blockers: None for planning. Live creation/read verification depends on backend BE-03; provider integration remains in the separate ingress epic.
 - Next steps: FE-01 when implementation is requested, then creation/history work and FE-04 validation.
+
+### 2026-10-02 — Backend handoff
+
+- Completed frontend task IDs: None; frontend implementation remains outside this request.
+- Backend BE-01–BE-03 complete; the documented settled contract is implemented with exact decimal strings, nullable provenance/outcomes, saved ordered skips and UUID Idempotency-Key replay. No shared contract changes were needed.
+- Validation: Backend PostgreSQL regressions, OpenAPI, custom-header CORS and actual HTTP create/replay/history/Bet smoke pass. Full browser acceptance remains unperformed.
+- Blockers: Frontend FE-01–FE-03 must be implemented before FE-04 and backend BE-04 can close.
+- Next steps: FE-01 against the live backend contract, followed by FE-02/FE-03 and FE-04.
+
+### 2026-10-02 — Frontend implementation and complete slice acceptance
+
+- Completed task IDs: FE-01, FE-02, FE-03, FE-04; sibling backend BE-04 acceptance dependency satisfied. Both areas are complete.
+- Implementation: Typed exact-value clients; tab-persisted creation identity; distinct Preview decisions/Create Dry Run controls; positive money/name inputs; safe definite errors versus unknown-outcome recovery; explicit pending discard; Games/Runs/Run hash routes; saved snapshot/provenance/skip/accounting display.
+- Validation: `npm run build` passed. `TEST_FRONTEND_PORT=5187 npm test` passed 41 controlled tests; five live tests skipped in that command. Against a generated disposable PostgreSQL server on 8017, `LIVE_API=1 TEST_API_BASE_URL=http://127.0.0.1:8017 TEST_FRONTEND_PORT=5188 npm test -- games.spec strategies-live` passed 12, and `LIVE_RUN_DB_FILE=/private/tmp/autopredict-slice3-browser.json TEST_API_BASE_URL=http://127.0.0.1:8017 TEST_FRONTEND_PORT=5188 npm test -- runs-live` passed two mobile/desktop flows. Backend `RUN_POSTGRES_TESTS=1 .venv/bin/pytest -q --tb=short` passed 88. `git diff --check` passed.
+- Evidence: Live committed response intentionally lost; original key/body restored after reload and replayed with 200; exactly one Run in history. Bets match stored Selection line/price and fixed stake. Dedicated games/quotes changed after creation; Run detail and API Bets remained identical after reload. Keyboard creation/navigation, 15-second timeout recovery, stale navigation/reads, exact nullable metrics, mobile width and safe errors covered. Ignored screenshots `frontend/test-results/runs-create-live-{375,1280}.png` and `runs-live-{375,1280}.png` inspected.
+- Cleanup: Disposable server stopped, generated database dropped and metadata removed. No development schema/fixture changes. Existing upstream backend deprecation and Node color-environment warnings are non-failing.
+- Blockers: None for this slice. Provider integration remains explicitly unperformed because the independent ingress epic is absent.
+- Next steps: No slice 3 tasks remain. Settlement/P&L and ingress continue under their own governing plans.

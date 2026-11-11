@@ -243,7 +243,7 @@ Backend tests include deterministic random selection, kickoff boundaries, paired
 
 ### Random Strategy in the Games page
 
-After migrations, demo seeding and the explicit strategy bootstrap above, start the backend and frontend with the documented API base URL and allowed CORS origin. Select eligible game checkboxes, then click **Execute Random Strategy**. The page shows one decision per eligible game with exact saved odds, or a reason for each skipped game. Changing selection clears the preview. Execution checks kickoff on the server and records no bets or runs.
+After migrations, demo seeding and the explicit strategy bootstrap above, start the backend and frontend with the documented API base URL and allowed CORS origin. Select eligible game checkboxes, then click **Preview decisions**. The page shows one decision per eligible game with exact saved odds, or a reason for each skipped game. Changing selection clears the preview. Execution checks kickoff on the server and records no bets or runs.
 
 Frontend validation (from `frontend/`):
 
@@ -254,3 +254,82 @@ LIVE_API=1 TEST_API_BASE_URL=http://127.0.0.1:8000 TEST_FRONTEND_PORT=5176 npm t
 ```
 
 For live tests, allow `http://127.0.0.1:5176` in backend `CORS_ORIGINS`, and provide the seeded demo games and baseline strategy. The live suite exercises desktop/mobile selection, execution and exact stored-value parity. Provider Refresh integration remains separate.
+
+### Persisted Dry Run simulations (vertical slice 3 backend)
+
+Apply the additive migration and explicitly bootstrap the local simulation owner:
+
+```sh
+cd backend
+uv run --locked alembic upgrade head
+uv run --locked python -m app.seed_user
+```
+
+The idempotent loader preserves edits to `Local Simulator` (`50000000-0000-4000-8000-000000000001`). Runs belong to this server-resolved User; callers cannot select an owner. This local setup does not provide authentication. Strategies remain shared. Restart the backend to load the routes. Demo game seeding and strategy bootstrap use the commands above; nothing writes at startup.
+
+Send `POST /api/runs` with a UUID `Idempotency-Key` header and this body, replacing game IDs with stored upcoming games:
+
+```json
+{
+  "strategy_id": "40000000-0000-4000-8000-000000000001",
+  "game_ids": ["<game-uuid>"],
+  "starting_bankroll": "1000.00",
+  "stake_per_bet": "10.00",
+  "name": "First simulation",
+  "notes": "Optional notes"
+}
+```
+
+Money inputs are positive exact decimal strings, at most two decimal places and at most `9999999999.99`. Extra fields, duplicate/empty game IDs, blank names, and missing/malformed keys return 422. All entities are checked before sampling. Unknown resources return 404; inactive strategy, no eligible games, or changed-body reuse of a key return 409. Insufficient bankroll returns 422 without adjusting stakes or truncating games. Missing User bootstrap and database errors return sanitized 503 `detail` responses.
+
+Creation generates fresh server decisions and returns 201 `{run, bets, skipped_games}`. It records one fixed-stake theoretical Bet per eligible game and retains all requested games in order, including skip reasons. Each Run has an independent bankroll. The response includes `bet_count`, `committed_stake`, and `available_bankroll` (starting bankroll minus open committed stakes). Final bankroll, profit, ROI, results and settlement timestamps remain null. These are open theoretical positions; no wagers or realized P&L are produced.
+
+Retain the exact body and key before sending. Retrying the same normalized request returns the original persisted response with 200, even after kickoff or server restart; it creates no new decisions. Decimal formatting such as `10` and `10.00` is normalized. Game order is significant. A different body with the same key returns 409; a new key creates a separate simulation. If a response is lost, retry the original key rather than assigning a new one. Request identity is stored in PostgreSQL. Allowed frontend origins support the `Idempotency-Key` CORS header.
+
+| Method | Endpoint | Behavior |
+| --- | --- | --- |
+| GET | `/api/runs` | Local User's Runs, newest start time first, UUID ascending for ties |
+| GET | `/api/runs/{run_id}` | Run settings, selected game IDs, skips and theoretical accounting |
+| GET | `/api/runs/{run_id}/bets` | Stored Bet snapshots in requested game order |
+| GET | `/api/bets/{bet_id}` | One owned Bet snapshot |
+
+IDs are UUIDs, decimals are strings, timestamps are UTC, and unset outcomes are null. Known empty lists return `[]`; unknown or other-owned resources return 404. Read endpoints never sample decisions or call providers. Historical side, line, price, participant names, kickoff and quote provenance come from immutable execution snapshots, independently of later Game/Selection changes. Demo `quote_provenance` is null. Provider integration remains unperformed because ingress is not implemented.
+
+Backend verification uses `RUN_POSTGRES_TESTS=1 uv run --locked pytest` with disposable PostgreSQL databases. It covers migration upgrade/downgrade/re-upgrade and drift, ownership and restrictive deletion, atomic rollback, exact budget boundaries, kickoff crossing, immutable snapshots, concurrent retries and quote-writer locking, constant history query counts, sanitized errors, CORS and an actual local HTTP create/replay/list/detail/Bet smoke flow. The slice 3 frontend flow and isolated browser acceptance commands are documented below.
+
+### Create and inspect Dry Runs in the browser
+
+Complete migration, demo game seeding, strategy bootstrap and User bootstrap, then start the backend and frontend as described above. In **Games**, select upcoming games with paired spreads. **Preview decisions** remains a separate action. Enter a starting bankroll and stake (defaults `1000.00` and `10.00`), optionally name the Run, and click **Create Dry Run**. Creation generates fresh server decisions and opens the saved Run; it does not submit the earlier preview.
+
+Use **Runs** to inspect history or open a saved Run URL (`#/runs/<uuid>`). Reload and browser back/forward preserve the route. Details display the stored Bets, requested games and skips, exact saved odds/stakes, committed stake and available bankroll. Outcomes and settlement metrics show **Not settled**. Demo prices are labeled; provider observations, when present, display their saved provenance. Changes to current quotes do not change the displayed execution snapshots.
+
+Creation saves the original request body and UUID key in the tab's sessionStorage before sending. If the connection fails or the request times out, **Retry creation** recovers that same request, including after reload in the same tab. It can return a Run that was already committed. **Discard pending request** explains that an earlier Run may exist and links to history before allowing a new intent. Leaving the page or aborting the browser request does not imply database rollback. Browser session storage must be available for creation recovery.
+
+From `frontend/`, run the controlled browser suite and production build:
+
+```sh
+npm run build
+TEST_FRONTEND_PORT=5187 npm test
+```
+
+The standard suite skips live tests. It covers positive exact money input, safe errors, duplicate-click protection, actual timeout recovery, restored keys, stale requests, navigation, mixed skips, immutable snapshot display, unsettled values, provenance, keyboard use and mobile layout, plus earlier Games/preview regressions.
+
+To reproduce isolated PostgreSQL acceptance without modifying development fixtures, start this helper from the repository root in one terminal:
+
+```sh
+backend/.venv/bin/python frontend/tests/support/live_backend.py \
+  --metadata /private/tmp/autopredict-slice3-browser.json \
+  --port 8017 --origin http://127.0.0.1:5188
+```
+
+It creates and migrates a generated disposable database, seeds dedicated upcoming demo games and bootstraps Strategy/User, and serves the backend on port 8017. The configured PostgreSQL role must have database creation permission. In another terminal, from `frontend/`, run existing live regressions before the tests that intentionally change the dedicated quotes:
+
+```sh
+LIVE_API=1 TEST_API_BASE_URL=http://127.0.0.1:8017 TEST_FRONTEND_PORT=5188 \
+  npm test -- games.spec strategies-live
+LIVE_RUN_DB_FILE=/private/tmp/autopredict-slice3-browser.json \
+  TEST_API_BASE_URL=http://127.0.0.1:8017 TEST_FRONTEND_PORT=5188 \
+  npm test -- runs-live
+```
+
+The saved-run tests deliberately lose a committed creation response, reload/retry with the same key, verify one Run, compare exact snapshots with PostgreSQL-backed responses, mutate only the Run's games in that disposable database, and confirm unchanged historical display after reload at 375px and 1280px. Screenshots are written to ignored `frontend/test-results/runs-create-live-*.png` and `runs-live-*.png`. Restart the helper for a fresh fixture set before repeating these mutation tests. Stop the helper with Ctrl+C; it drops its generated database and removes its metadata file. Ingress/provider integration remains unperformed because that separate epic is unimplemented.

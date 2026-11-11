@@ -75,8 +75,10 @@ for (const failure of ['503', 'network', 'invalid-json']) {
     await page.goto('/')
     await expect(page.getByRole('alert')).toBeVisible()
     await page.keyboard.press('Tab')
+    await page.keyboard.press('Tab')
+    await page.keyboard.press('Tab')
     await expect(page.getByRole('button', { name: 'Retry' })).toBeFocused()
-    expect(await page.getByRole('button').evaluate(el => getComputedStyle(el).outlineStyle)).toBe('solid')
+    expect(await page.getByRole('button', { name: 'Retry', exact: true }).evaluate(el => getComputedStyle(el).outlineStyle)).toBe('solid')
     recover = true
     await page.keyboard.press('Enter')
     await expect(page.getByRole('status')).toContainText('Loading games…')

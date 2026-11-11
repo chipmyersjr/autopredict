@@ -13,6 +13,11 @@ from app.schemas import GameResponse, MarketResponse
 from app.schemas import StrategyCreate, StrategyResponse, DecisionRequest, DecisionResponse
 from app.strategies import utc_now, resolve_candidates, random_decisions
 
+from fastapi import Header, Response
+from app.models import Run, Bet
+from app.schemas import RunCreate, RunResponse, RunCreationResponse, BetResponse
+from app.runs import create_run, read_run, run_response, ordered_bets, bet_response, local_user, RUN_GRAPH
+
 router = APIRouter(prefix="/api", responses={503: {"description": "Database unavailable"}})
 DatabaseSession = Annotated[Session, Depends(get_session)]
 GAME_GRAPH = selectinload(Game.markets).selectinload(Market.selections)
@@ -96,3 +101,37 @@ def preview_decisions(strategy_id: UUID, body: DecisionRequest, session: Databas
         strategy_id=strategy.id, generated_at=now, requested_game_ids=body.game_ids,
         decisions=random_decisions(groups), skipped_games=skips,
     )
+
+
+@router.post("/runs", response_model=RunCreationResponse, status_code=201, tags=["Runs"], responses={200: {"model": RunCreationResponse, "description": "Original persisted result replayed"}, 404: {"description": "Strategy or game not found"}, 409: {"description": "Inactive strategy, no eligible games, or request key conflict"}})
+def run_create(body: RunCreate, session: DatabaseSession, response: Response,
+               idempotency_key: Annotated[UUID, Header(alias="Idempotency-Key")]):
+    saved, created = create_run(session, body, idempotency_key)
+    response.status_code = 201 if created else 200
+    return saved
+
+
+@router.get("/runs", response_model=list[RunResponse], tags=["Runs"])
+def runs_list(session: DatabaseSession):
+    owner = local_user(session)
+    runs = session.scalars(select(Run).where(Run.user_id == owner).options(*RUN_GRAPH).order_by(Run.start_time.desc(), Run.id)).all()
+    return [run_response(run) for run in runs]
+
+
+@router.get("/runs/{run_id}", response_model=RunResponse, tags=["Runs"])
+def run_detail(run_id: UUID, session: DatabaseSession):
+    return run_response(read_run(session, run_id))
+
+
+@router.get("/runs/{run_id}/bets", response_model=list[BetResponse], tags=["Bets"])
+def run_bets(run_id: UUID, session: DatabaseSession):
+    return ordered_bets(read_run(session, run_id))
+
+
+@router.get("/bets/{bet_id}", response_model=BetResponse, tags=["Bets"])
+def bet_detail(bet_id: UUID, session: DatabaseSession):
+    owner = local_user(session)
+    bet = session.scalar(select(Bet).join(Run).where(Bet.id == bet_id, Run.user_id == owner))
+    if bet is None:
+        raise HTTPException(404, "Bet not found")
+    return bet_response(bet)

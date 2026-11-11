@@ -1,10 +1,12 @@
-# Design 3, part 1 — Game ingress strategy proposal
+# Design 3, part 1 — Game info ingress backend
 
 Area status: `not_started`
 
 ## Objective and governing design
 
-Research actual college-football sources and draft an ingress strategy consistent with `design/1_mvp.html` sections 2–5 and the existing Game → Market → Selection schema. The current proposal is in `design/3_game_info_ingress.html`. This plan includes completed design exploration and the now-requested backend implementation plan. This turn authorizes planning only; runtime tasks below remain not_started.
+Implement accepted on-demand ingress under [design/3_game_info_ingress.html](../../../design/3_game_info_ingress.html), with the canonical domain in [design/1_mvp.html](../../../design/1_mvp.html) and [the ERD](../../../design/2_mvp_erd.png). Preserve [design/4_shared_strategies.html](../../../design/4_shared_strategies.html) shared-strategy behavior.
+
+Planning status: ready. Research/design/planning tasks BE-01–BE-04 are complete. Runtime tasks BE-05–BE-12 remain not_started; area status tracks runtime delivery. The October 3 review updates plans only. Earlier logs describe historical conditions, not current blockers.
 
 ## Tasks
 
@@ -62,9 +64,10 @@ Research actual college-football sources and draft an ingress strategy consisten
 
 Governing design: [MVP](../../../design/1_mvp.html) sections 2–6; [ERD](../../../design/2_mvp_erd.png); [ingress design](../../../design/3_game_info_ingress.html) sections 1–8, as revised with CHIP’s acceptance.
 
-Existing code has Game/Market/Selection models and an initial migration. main.py exposes health/readiness only; GamesPage.tsx is still a placeholder. Epic 1 read endpoints are planned but not implemented. Reuse those endpoints and schemas when available, rather than inventing a second games API. Ingress can begin on the completed persistence foundation; final API handoff depends on epic 1 BE-03/BE-04/BE-05.
+Revalidated October 3, 2026: Game/Market/Selection persistence, stored-games/market routes, nested response schemas, and GET/POST CORS are implemented. The Games page renders stored spreads and includes strategy preview and dry-run controls. Completed `1_1_mvp_vertical_slice_1` work satisfies the read API and Games-view prerequisites. Reuse those routes/schemas and preserve descending kickoff order with ascending UUID ties.
 
-Accepted: America/Los_Angeles calendar weeks; both teams FBS; free keys only; 20 attempts/week, 2 reserved until Sunday; 60-second cooldown; provider 10% reserve; deterministic per-game bookmaker selection; saved observations valid until kickoff/invalidation. No schedule, queue, page-load provider access, automatic retry, separate source spike, or status dashboard. Settlement and bet creation remain later MVP epics.
+Provider settings, integration tables, refresh orchestration, POST /api/games/refresh, and current-week GET filtering are absent. Existing working-tree run/bet code includes provenance snapshot fields but does not yet resolve imported quote observations. Integrate that existing path without claiming unrelated work is validated by this review.
+Accepted: America/Los_Angeles calendar weeks; both teams FBS; free keys only; 20 attempts/week, 2 reserved until Sunday; 60-second cooldown; provider 10% reserve; deterministic per-game bookmaker selection; saved observations valid until kickoff/invalidation. No schedule, queue, page-load provider access, automatic retry, separate source spike, or status dashboard. Settlement and bet creation are outside this ingress epic; preserve existing run/bet behavior.
 
 ### Implementation contract
 
@@ -72,12 +75,12 @@ Accepted: America/Los_Angeles calendar weeks; both teams FBS; free keys only; 20
 - Get CFBD /info within an allowed attempt when initializing/refreshing account metadata; track its possible cost. Use a conservative call budget before any metadata call. Source reset timestamps control monthly accounting; unknown reset timing stays unknown. Odds headers reconcile credits; FAQ only establishes reset day, not exact hour. External key use can produce earlier exhaustion and must be surfaced.
 - HTTP timeouts are bounded; a refresh has a 45-second total deadline. No retries. No DB transaction spans network calls. Use exclusive PostgreSQL advisory-lock ownership on a dedicated connection plus a durable refresh run and generation token. Lock loss invalidates the owner; later writes must confirm the run generation. Recover abandoned runs on subsequent requests without refunding uncertain calls or starting overlapping writers. Do not clear ownership just because the browser disconnected.
 - Persist weekly attempt bucket and provider-call reservations before sending requests. A reservation becomes an accepted attempt on starting first provider work; entirely preflight-blocked requests leave attempts unchanged. Commit this transition before network dispatch, treating a crash between transition and dispatch conservatively. Reserve provider cost per call; count ambiguous outcomes and reconcile authoritative headers. Reject a call when it would breach the 10% reserve. Partial provider exhaustion may still permit the other stage.
-- Integration tables proposed: provider_game_links (unique provider/external ID; canonical game FK; source season/type/teams/state/time); team_aliases (explicit provider team identity/name → canonical alias); quote_observations (game/market, external event, bookmaker, paired exact lines/prices, source/fetch timestamps, content identity); game_result_changes; refresh_runs; weekly_refresh_buckets; provider_quota_periods and provider_call_reservations. Use exact numeric types, UTC timestamps, uniqueness, and foreign keys. Retain failed/unmatched item reasons on runs; no unrelated generic framework.
+- Integration tables to add: provider_game_links (unique provider/external ID; canonical game FK; source season/type/teams/state/time); team_aliases (explicit provider team identity/name → canonical alias); quote_observations (game/market, external event, bookmaker, paired exact lines/prices, source/fetch timestamps, content identity); game_result_changes; refresh_runs; weekly_refresh_buckets; provider_quota_periods and provider_call_reservations. Use exact numeric types, UTC timestamps, uniqueness, and foreign keys. Retain failed/unmatched item reasons on runs; no unrelated generic framework.
 - Keep one canonical spread market per real game for the current projection with two stable team selections. Changing chosen bookmaker updates projection/provenance together, leaving observations intact. Map provider data outside core UUIDs. Keep demo fixtures separate.
 - POST /api/games/refresh has no caller-selected week; GET /api/games?window=current filters stored data. Route /refresh must precede /{game_id}. Existing unfiltered GET shapes/errors stay compatible. No refresh-status route.
 - Response fields and HTTP statuses follow ingress section 7. reason vocabulary: refreshed, no_games, partial_failure, provider_failure, weekly_limit, sunday_reserve, cooldown, provider_budget, provider_rate_limit, refresh_in_progress, configuration_error, database_unavailable. remaining_refreshes includes Sunday-reserved attempts; retry_at is the earliest known local/provider restriction boundary, or null when unknown. Reserve/reset messages explain whichever restriction actually applies; do not promise provider availability on Monday.
 - Stage outcome records distinguish fetched-and-applied, skipped-not-needed, rejected/quarantined, quota-blocked, and failed. Full success means required stages applied without unresolved invalid items; invalid/unmatched relevant items cause a partial-failure popup while valid items persist. Missing market on a valid response is normal unavailability, not provider failure. Empty current week is success. data_changed reflects committed changes so frontend can reload after partial success.
-- GET projection uses current server time to suppress new-bet availability after kickoff without inventing completed/in_progress status. Clock-derived display labels must be distinguishable from provider-confirmed status. Future bet implementation rechecks this transactionally; this epic does not implement bets.
+- GET projection uses current server time to suppress new-bet availability after kickoff without inventing completed/in_progress status. Clock-derived display labels must be distinguishable from provider-confirmed status. Existing strategy/run eligibility checks must consume the imported current projection and quote provenance; this epic does not add bet creation or settlement.
 
 ## Reviewable implementation tasks
 
@@ -139,10 +142,10 @@ Accepted: America/Los_Angeles calendar weeks; both teams FBS; free keys only; 20
 
 - [ ] BE-11 — Expose refresh and stored current-week APIs
   - Status: not_started
-  - Scope: POST route and uniform response envelope; GET window=current filter on existing games router; cutoff-based availability using current time; preserve existing endpoints.
-  - Dependencies: BE-10; epic 1 BE-03/BE-04/BE-05 for reusable read APIs and CORS.
+  - Scope: POST route and uniform response envelope; GET window=current filter on existing games router; cutoff-based availability using current time; preserve existing endpoints. Resolve imported quote provenance for existing strategy decisions/run snapshots from persisted observations, leaving demo provenance null.
+  - Dependencies: BE-10; completed `1_1_mvp_vertical_slice_1` BE-03/BE-04/BE-05 for reusable read APIs and CORS.
   - Acceptance criteria: Contract in ingress section 7 documented in OpenAPI; static refresh route works; database-only GET; typed reason/status handling; Sunday games/results readable; unfiltered API and error semantics remain compatible; no credentials disclosed.
-  - Validation: PostgreSQL API tests for 200/429/409/503/422, body fields, date filter, partial reload flag, order, server-clock kickoff cutoff, endpoint routing, health/readiness regressions and CORS.
+  - Validation: PostgreSQL API tests for 200/429/409/503/422, body fields, date filter, partial reload flag, order, server-clock kickoff cutoff, endpoint routing, health/readiness regressions and CORS; imported provenance reaches immutable run snapshots and later refreshes do not rewrite existing bets.
   - Completion notes: Pending.
 
 - [ ] BE-12 — Verify and document real ingress handoff
@@ -169,3 +172,11 @@ All BE-05–BE-12 complete and validated; explicit free-provider refresh persist
 - Adopted design-number/part-number naming; moved this existing plan without changing task IDs, statuses, or completed work.
 - Validation: Sibling plans and governing design links resolve after rename.
 - Next: Continue the existing task sequence.
+
+### 2026-10-03 — Plan revalidation
+
+- Completed task IDs: None newly completed; BE-01–BE-04 remain complete. BE-05–BE-12 remain not_started.
+- Validation: Compared sibling plans with design 1, design 3 sections 1–8, design 4, completed slice-1 plans, and current settings/models/schemas/routes/main/strategy/run code. Confirmed read API/CORS prerequisites and absence of ingress runtime. This review does not repeat September 30 provider research or claim credentialed verification.
+- Affected files: Both ingress plans only. Corrected current-state/dependency claims and added existing run provenance handoff coverage.
+- Blockers: None for planning or BE-05/BE-06. Frontend integration requires BE-11. Actual free-key behavior remains implementation validation.
+- Next: BE-05 and BE-06, then BE-07–BE-12 in dependency order. Research is complete; no separate research task is needed.
