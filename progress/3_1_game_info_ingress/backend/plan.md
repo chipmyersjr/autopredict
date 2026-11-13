@@ -1,12 +1,12 @@
 # Design 3, part 1 — Game info ingress backend
 
-Area status: `not_started`
+Area status: `in_progress`
 
 ## Objective and governing design
 
 Implement accepted on-demand ingress under [design/3_game_info_ingress.html](../../../design/3_game_info_ingress.html), with the canonical domain in [design/1_mvp.html](../../../design/1_mvp.html) and [the ERD](../../../design/2_mvp_erd.png). Preserve [design/4_shared_strategies.html](../../../design/4_shared_strategies.html) shared-strategy behavior.
 
-Planning status: ready. Research/design/planning tasks BE-01–BE-04 are complete. Runtime tasks BE-05–BE-12 remain not_started; area status tracks runtime delivery. The October 3 review updates plans only. Earlier logs describe historical conditions, not current blockers.
+Planning status: ready. Research/design/planning tasks BE-01–BE-04 and provider-client task BE-05 are complete. Runtime tasks BE-06–BE-12 remain not_started; area status tracks runtime delivery. Earlier logs describe historical conditions, not current blockers.
 
 ## Tasks
 
@@ -66,7 +66,7 @@ Governing design: [MVP](../../../design/1_mvp.html) sections 2–6; [ERD](../../
 
 Revalidated October 3, 2026: Game/Market/Selection persistence, stored-games/market routes, nested response schemas, and GET/POST CORS are implemented. The Games page renders stored spreads and includes strategy preview and dry-run controls. Completed `1_1_mvp_vertical_slice_1` work satisfies the read API and Games-view prerequisites. Reuse those routes/schemas and preserve descending kickoff order with ascending UUID ties.
 
-Provider settings, integration tables, refresh orchestration, POST /api/games/refresh, and current-week GET filtering are absent. Existing working-tree run/bet code includes provenance snapshot fields but does not yet resolve imported quote observations. Integrate that existing path without claiming unrelated work is validated by this review.
+Provider settings, HTTP clients, and Pacific week/calendar primitives are implemented and validated under BE-05. Integration tables, refresh orchestration, POST /api/games/refresh, and current-week GET filtering are absent. Existing run/bet code includes provenance snapshot fields but does not yet resolve imported quote observations. Integrate that existing path without claiming unrelated work is validated by this review.
 Accepted: America/Los_Angeles calendar weeks; both teams FBS; free keys only; 20 attempts/week, 2 reserved until Sunday; 60-second cooldown; provider 10% reserve; deterministic per-game bookmaker selection; saved observations valid until kickoff/invalidation. No schedule, queue, page-load provider access, automatic retry, separate source spike, or status dashboard. Settlement and bet creation are outside this ingress epic; preserve existing run/bet behavior.
 
 ### Implementation contract
@@ -92,13 +92,13 @@ Accepted: America/Los_Angeles calendar weeks; both teams FBS; free keys only; 20
   - Validation: Official documentation review; HTML/local-link and task-schema checks.
   - Completion notes: design/3_game_info_ingress.html and both plans revised September 30, 2026. No application code or credentialed requests.
 
-- [ ] BE-05 — Configure provider clients and Pacific week rules
-  - Status: not_started
+- [x] BE-05 — Configure provider clients and Pacific week rules
+  - Status: complete
   - Scope: SecretStr CFBD/odds keys, approved defaults and free-only hosts, safe HTTP clients, week/season-window resolution and timeout budgets; update .env.example without keys.
   - Dependencies: Existing settings; BE-04.
   - Acceptance criteria: Monday/Sunday/DST boundaries are exact; January season context uses provider calendar; no provider calls on startup/read/page load; credentials never appear in errors/logs; no automatic retries.
   - Validation: Frozen-clock week tests, HTTP contract fixtures for authenticated requests/errors/redaction, calendar overlaps and January postseason cases.
-  - Completion notes: Pending.
+  - Completion notes: Validated November 12, 2026. Implemented backend/app/ingress.py, provider SecretStr settings in backend/app/settings.py, blank key examples in .env.example, and explicit httpx/tzdata dependencies in backend/pyproject.toml and backend/uv.lock. backend/tests/test_ingress.py verifies Pacific Monday boundaries, 167/169-hour DST weeks, January/year-crossing calendar selection, explicit authenticated endpoints, log/error redaction, no retries or redirects, missing-key preflight, and the shared 45-second deadline. Focused ingress/settings checks: 18 passed. Full default backend suite: 80 passed, 23 skipped, one upstream TestClient deprecation warning; no TestClient stall reproduced here. PostgreSQL integration tests were not enabled, and no real keys or live provider calls were used. Durable calendar caching, quota admission, imports, and API orchestration remain BE-06–BE-11 work.
 
 - [ ] BE-06 — Add integration persistence migration
   - Status: not_started
@@ -180,3 +180,11 @@ All BE-05–BE-12 complete and validated; explicit free-provider refresh persist
 - Affected files: Both ingress plans only. Corrected current-state/dependency claims and added existing run provenance handoff coverage.
 - Blockers: None for planning or BE-05/BE-06. Frontend integration requires BE-11. Actual free-key behavior remains implementation validation.
 - Next: BE-05 and BE-06, then BE-07–BE-12 in dependency order. Research is complete; no separate research task is needed.
+
+### 2026-11-12 — BE-05 completion review authorized by CHIP
+
+- Completed task IDs: BE-05; backend area is in_progress, with BE-06–BE-12 still not_started.
+- Validation: Reviewed design/3_game_info_ingress.html and the existing implementation against BE-05 acceptance criteria. Checked public CFBD games/calendar/schedule and Odds API v4 documentation. From backend/, `.venv/bin/python -m pytest tests/test_ingress.py tests/test_settings.py -q` passed 18 tests; `.venv/bin/python -m pytest -q` passed 80 tests with 23 skipped and one upstream TestClient warning. All provider tests use mock transports and fake credentials.
+- Affected files: Status and validation evidence updated in this plan only; implementation files listed in BE-05 completion notes already existed before this review.
+- Limitations: No credentialed provider verification or PostgreSQL integration run. These do not block the provider-primitives task; database and live integration acceptance remain in later tasks.
+- Next: BE-06 integration persistence migration, followed by BE-07 durable admission/accounting.
