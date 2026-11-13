@@ -6,7 +6,7 @@ Area status: `in_progress`
 
 Implement accepted on-demand ingress under [design/3_game_info_ingress.html](../../../design/3_game_info_ingress.html), with the canonical domain in [design/1_mvp.html](../../../design/1_mvp.html) and [the ERD](../../../design/2_mvp_erd.png). Preserve [design/4_shared_strategies.html](../../../design/4_shared_strategies.html) shared-strategy behavior.
 
-Planning status: ready. Research/design/planning tasks BE-01–BE-04 and provider-client task BE-05 are complete. Runtime tasks BE-06–BE-12 remain not_started; area status tracks runtime delivery. Earlier logs describe historical conditions, not current blockers.
+Planning status: ready. BE-01–BE-06 are complete. Runtime tasks BE-07–BE-12 remain not_started; area status tracks runtime delivery. Earlier logs describe historical conditions, not current blockers.
 
 ## Tasks
 
@@ -66,7 +66,7 @@ Governing design: [MVP](../../../design/1_mvp.html) sections 2–6; [ERD](../../
 
 Revalidated October 3, 2026: Game/Market/Selection persistence, stored-games/market routes, nested response schemas, and GET/POST CORS are implemented. The Games page renders stored spreads and includes strategy preview and dry-run controls. Completed `1_1_mvp_vertical_slice_1` work satisfies the read API and Games-view prerequisites. Reuse those routes/schemas and preserve descending kickoff order with ascending UUID ties.
 
-Provider settings, HTTP clients, and Pacific week/calendar primitives are implemented and validated under BE-05. Integration tables, refresh orchestration, POST /api/games/refresh, and current-week GET filtering are absent. Existing run/bet code includes provenance snapshot fields but does not yet resolve imported quote observations. Integrate that existing path without claiming unrelated work is validated by this review.
+Provider settings, HTTP clients, and Pacific week/calendar primitives are implemented and validated under BE-05. Integration models and migration 0004 are implemented and validated under BE-06; the development database has not been migrated by this task. Refresh orchestration, POST /api/games/refresh, and current-week GET filtering are absent. Existing run/bet code includes provenance snapshot fields but does not yet resolve imported quote observations. Integrate that existing path without claiming unrelated work is validated by this review.
 Accepted: America/Los_Angeles calendar weeks; both teams FBS; free keys only; 20 attempts/week, 2 reserved until Sunday; 60-second cooldown; provider 10% reserve; deterministic per-game bookmaker selection; saved observations valid until kickoff/invalidation. No schedule, queue, page-load provider access, automatic retry, separate source spike, or status dashboard. Settlement and bet creation are outside this ingress epic; preserve existing run/bet behavior.
 
 ### Implementation contract
@@ -100,13 +100,13 @@ Accepted: America/Los_Angeles calendar weeks; both teams FBS; free keys only; 20
   - Validation: Frozen-clock week tests, HTTP contract fixtures for authenticated requests/errors/redaction, calendar overlaps and January postseason cases.
   - Completion notes: Validated November 12, 2026. Implemented backend/app/ingress.py, provider SecretStr settings in backend/app/settings.py, blank key examples in .env.example, and explicit httpx/tzdata dependencies in backend/pyproject.toml and backend/uv.lock. backend/tests/test_ingress.py verifies Pacific Monday boundaries, 167/169-hour DST weeks, January/year-crossing calendar selection, explicit authenticated endpoints, log/error redaction, no retries or redirects, missing-key preflight, and the shared 45-second deadline. Focused ingress/settings checks: 18 passed. Full default backend suite: 80 passed, 23 skipped, one upstream TestClient deprecation warning; no TestClient stall reproduced here. PostgreSQL integration tests were not enabled, and no real keys or live provider calls were used. Durable calendar caching, quota admission, imports, and API orchestration remain BE-06–BE-11 work.
 
-- [ ] BE-06 — Add integration persistence migration
-  - Status: not_started
+- [x] BE-06 — Add integration persistence migration
+  - Status: complete
   - Scope: Integration tables, unique identity/observation constraints, run ownership and quota records, auditable results; preserve original migration and canonical schema.
   - Dependencies: Completed epic 1 BE-01; BE-04.
   - Acceptance criteria: New upgrade creates only required tables/fields; decimal and timestamp precision correct; duplicate mappings/observations and orphan rows rejected; restart leaves ledgers intact.
   - Validation: Dedicated PostgreSQL migration/schema tests; downgrade/re-upgrade on disposable DB only; no migration on app startup.
-  - Completion notes: Pending.
+  - Completion notes: Completed November 12, 2026. Added nine integration models in backend/app/models.py and additive migrations/versions/0004_add_ingress_persistence.py: provider mappings, season-scoped team aliases, paired quote observations, result-change audit, refresh runs with database-issued generation numbers, weekly buckets, provider quota periods/call reservations, and season-calendar cache. Existing domain tables and earlier migrations are unchanged. Added backend/tests/test_ingress_persistence.py and extended backend/tests/test_migrations.py. Validation covers exact decimals, timezone-aware timestamps, unique identities/content/current projections, orphan and invalid-record rejection, zero-line spreads, restrictive history references, persistence across connection-pool recreation, logged PostgreSQL tables, and upgrade/downgrade/re-upgrade with preserved domain data and no Alembic drift. Full PostgreSQL-enabled backend suite: 134 passed, one upstream TestClient warning, no skipped tests. All migration cycles used generated disposable databases; no development database migration or live provider calls were performed. Runtime locking, admission, quota enforcement, imports, and API integration remain BE-07–BE-11 work.
 
 - [ ] BE-07 — Enforce atomic refresh and quota admission
   - Status: not_started
@@ -188,3 +188,11 @@ All BE-05–BE-12 complete and validated; explicit free-provider refresh persist
 - Affected files: Status and validation evidence updated in this plan only; implementation files listed in BE-05 completion notes already existed before this review.
 - Limitations: No credentialed provider verification or PostgreSQL integration run. These do not block the provider-primitives task; database and live integration acceptance remain in later tasks.
 - Next: BE-06 integration persistence migration, followed by BE-07 durable admission/accounting.
+
+### 2026-11-12 — BE-06 completion recorded at CHIP's request
+
+- Completed task IDs: BE-06; backend area remains in_progress, with BE-07–BE-12 not_started.
+- Validation: Full backend suite with RUN_POSTGRES_TESTS=1 passed 134 tests in 7.37 seconds, with one upstream TestClient deprecation warning. Disposable PostgreSQL tests verified migration cycles, metadata drift, domain-data preservation, constraints, and durable integration records. Git whitespace checks passed.
+- Affected files: backend/app/models.py, migrations/versions/0004_add_ingress_persistence.py, backend/tests/test_ingress_persistence.py, and backend/tests/test_migrations.py. This requested follow-up updates status/evidence in this plan only.
+- Limitations: Persistence across reconnects was tested; the development PostgreSQL server was not restarted or migrated. No provider credentials or live API calls were used. Runtime refresh enforcement is not claimed by BE-06.
+- Next: BE-07 — atomic refresh ownership and quota admission.
