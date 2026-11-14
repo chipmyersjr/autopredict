@@ -194,7 +194,11 @@ def test_additive_upgrade_preserves_domain_data_and_schema(migrated_database):
     command.check(config)
     inspector = inspect(engine)
     for table, columns in before.items():
-        assert [(c["name"], str(c["type"]), c["nullable"]) for c in inspector.get_columns(table)] == columns
+        # Later additive migrations may add columns; ingress must preserve all
+        # pre-existing columns and their precision/nullability.
+        original_names = {column[0] for column in columns}
+        assert [(c["name"], str(c["type"]), c["nullable"]) for c in inspector.get_columns(table)
+                if c["name"] in original_names] == columns
     quote_columns = {c["name"]: c for c in inspector.get_columns("quote_observations")}
     ingress_tables = set(inspector.get_table_names()) - set(before) - {"alembic_version"}
     for table in ingress_tables:
