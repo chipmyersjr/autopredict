@@ -6,13 +6,13 @@ Area status: `not_started`
 
 Add the accepted Games-page Refresh flow under [design/3_game_info_ingress.html](../../../design/3_game_info_ingress.html), especially sections 2–7, and [design/1_mvp.html](../../../design/1_mvp.html) sections 4 and 8. Preserve [design/4_shared_strategies.html](../../../design/4_shared_strategies.html) shared-strategy behavior.
 
-Planning status: ready, revalidated October 3, 2026. Area status tracks runtime delivery: FE-01 and FE-02 remain not_started. Earlier logs are history; accepted defaults no longer await review.
+Planning status: ready; FE-03 added November 14, 2026 following live ingress verification. Area status tracks runtime delivery: FE-01, FE-02, and FE-03 remain not_started. Earlier logs are history; accepted defaults no longer await review.
 
 ## Tasks
 
 Current design revision: the Games page will have one Refresh button and one success/failure popup with remaining refreshes and an informative failure reason. No UI code is implemented in this planning task. Backend and frontend implementation tasks are defined below.
 
-Earlier research loops had no applicable frontend implementation tasks; current FE-01 and FE-02 are below.
+Earlier research loops had no applicable frontend implementation tasks; current FE-01, FE-03, and FE-02 are below in execution order.
 
 ## Loop log
 
@@ -50,10 +50,18 @@ No quota panel, separate status endpoint, additional controls, or detailed statu
   - Validation: Frontend interaction tests for success, partial/blocked/error, double click prevention, re-enable, reload-after-changes including partial HTTP 200, handled 429/409/503/422 envelopes, malformed responses, empty week, popup accessibility/focus, scores/labels, existing controls, and no refresh on mount; build/type checks.
   - Completion notes: Pending.
 
+- [ ] FE-03 — Fix imported spread eligibility and team labels
+  - Status: not_started
+  - Scope: Update `frontend/src/pages/GamesPage.tsx` to accept either a complete `home`/`away` pair or a complete pair of the game's team names, matching backend eligibility. Resolve `home` and `away` to the corresponding game team names wherever spread sides appear on the Games page, including strategy preview. Keep API IDs and stored side values unchanged. Governing requirements: ingress design sections 5–6 and existing MVP strategy/dry-run behavior.
+  - Dependencies: Existing Games view and ingress BE-09 imported paired spreads; may be implemented independently of FE-01. Complete before FE-02.
+  - Acceptance criteria: An upcoming scheduled game with an active market and valid active `home`/`away` selections is selectable and can participate in strategy preview and dry-run creation. Spread labels show team names rather than raw role tokens. Existing team-named demo selections still work. Unknown, duplicate, mixed-format, incomplete, inactive, or invalid-price/line pairs remain unavailable; kickoff and game-status guards remain enforced.
+  - Validation: Frontend interaction tests using imported-role and existing team-name fixtures, including selection, preview, and dry-run submission; negative eligibility cases and kickoff boundaries; build/type checks. Manually verify an imported upcoming matchup displays both team names and is selectable when its pair is valid.
+  - Completion notes: Pending. Live ingress displayed valid paired spreads but every upcoming game was disabled with “No eligible paired spread”: the frontend required team-name sides while imported selections used `home`/`away`. Spread rendering also printed those stored role tokens directly.
+
 - [ ] FE-02 — Validate minimal refresh flow
   - Status: not_started
   - Scope: Browser smoke test using backend full-success, partial-failure, weekly/Sunday/cooldown/provider quota outcomes and current-week stored games.
-  - Dependencies: FE-01; BE-12 backend evidence.
+  - Dependencies: FE-01; FE-03; BE-12 backend evidence.
   - Acceptance criteria: Popup text/counts match backend; completed Sunday games remain visible; no status dashboard or provider credentials; whole click-to-stored-data path works.
   - Validation: UI build and browser interaction evidence with controlled backend data; record limits and unperformed live checks.
   - Completion notes: Pending.
@@ -73,7 +81,7 @@ No quota panel, separate status endpoint, additional controls, or detailed statu
 
 ## Frontend completion criteria
 
-FE-01 and FE-02 are complete and validated against BE-11. The page reads stored current-week data without provider work, performs one explicit refresh per click, reports full/empty/partial/blocked/error outcomes accurately, and reloads committed changes. Both areas must satisfy their completion criteria before the epic is complete.
+FE-01, FE-02, and FE-03 are complete and validated against BE-11. The page reads stored current-week data without provider work, performs one explicit refresh per click, reports full/empty/partial/blocked/error outcomes accurately, and reloads committed changes. Imported paired spreads show team names and remain selectable for eligible upcoming games. Both areas must satisfy their completion criteria before the epic is complete.
 
 ### 2026-10-03 — Plan revalidation
 
@@ -82,3 +90,10 @@ FE-01 and FE-02 are complete and validated against BE-11. The page reads stored 
 - Affected files: Both ingress plans only. Runtime tests were not run for this document review.
 - Blockers: No planning blockers. Runtime integration awaits BE-11; FE-02 also requires BE-12 evidence.
 - Next: FE-01 after BE-11, then FE-02. Historical Games-view dependency is satisfied.
+
+### 2026-11-14 — Imported spread UI follow-up
+
+- Completed task IDs: None; added FE-03 at CHIP's request. No implementation statuses changed.
+- Validation: Compared Games-page eligibility/rendering with imported `home`/`away` selections, backend support for both complete side formats, and ingress design sections 5–6. Document-only update; runtime tests not run.
+- Blockers: None for planning this fix.
+- Next: Implement FE-03 before the FE-02 browser validation; retain FE-01 Refresh-flow scope.
