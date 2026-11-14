@@ -84,9 +84,10 @@ def overlapping_weeks(window: WeekWindow, calendar: list[CalendarWeek]) -> list[
 class ProviderError(Exception):
     """Safe failure without request URLs, response bodies, or underlying errors."""
 
-    def __init__(self, reason: str, status: int | None = None):
+    def __init__(self, reason: str, status: int | None = None, *, quota=None):
         self.reason = reason
         self.status = status
+        self.quota = quota or {}
         super().__init__(reason)
 
 
@@ -144,6 +145,7 @@ class ProviderClients:
             params["apiKey"] = key
         reason = None
         status = None
+        quota = {}
         try:
             async with asyncio.timeout(remaining):
                 response = await self._client.get(
@@ -151,6 +153,12 @@ class ProviderClients:
                     timeout=httpx.Timeout(min(10, remaining), connect=min(3, remaining)),
                 )
                 status = response.status_code
+                # Error responses can carry authoritative spending and throttle
+                # metadata too. Retain only these headers, never the response.
+                quota = {name: response.headers[name] for name in (
+                    "x-requests-remaining", "x-requests-used", "x-requests-last",
+                    "retry-after",
+                ) if name in response.headers}
                 if status in {401, 403}:
                     reason = "configuration_error"
                 elif status == 429:
@@ -158,16 +166,11 @@ class ProviderClients:
                 elif not 200 <= status < 300:
                     reason = "provider_failure"
                 else:
-                    # Only accounting headers escape the client, never request objects.
-                    quota = {name: response.headers[name] for name in (
-                        "x-requests-remaining", "x-requests-used", "x-requests-last",
-                        "retry-after",
-                    ) if name in response.headers}
                     return response.json(parse_float=Decimal), quota
         except (httpx.HTTPError, TimeoutError, ValueError):
             reason = "provider_failure"
         # Raise outside the handler so chained transport exceptions cannot leak keys.
-        raise ProviderError(reason, status)
+        raise ProviderError(reason, status, quota=quota)
 
     async def calendar(self, season: int):
         rows, quota = await self._get("cfbd", "/calendar", {"year": season})

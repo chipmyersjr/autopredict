@@ -134,6 +134,30 @@ def test_transport_failure_is_sanitized():
     asyncio.run(run())
 
 
+@pytest.mark.parametrize("status", [200, 429, 500])
+def test_failed_response_retains_only_accounting_headers(status):
+    def handler(request):
+        return httpx.Response(status, text="invalid-json-private-body", headers={
+            "x-requests-remaining": "50", "x-requests-used": "450",
+            "x-requests-last": "1", "retry-after": "120",
+            "set-cookie": "private-cookie",
+        })
+
+    async def run():
+        async with ProviderClients(Settings(_env_file=None, odds_api_key="fake"),
+                                   transport=httpx.MockTransport(handler)) as clients:
+            with pytest.raises(ProviderError) as error:
+                await clients.odds(current_week(datetime.now(UTC)))
+            assert error.value.quota == {
+                "x-requests-remaining": "50", "x-requests-used": "450",
+                "x-requests-last": "1", "retry-after": "120",
+            }
+            assert error.value.status == status
+            assert error.value.__context__ is None
+            assert "private" not in str(error.value)
+    asyncio.run(run())
+
+
 def test_total_deadline_bounds_inflight_request():
     calls = []
 

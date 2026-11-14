@@ -6,7 +6,7 @@ Area status: `in_progress`
 
 Implement accepted on-demand ingress under [design/3_game_info_ingress.html](../../../design/3_game_info_ingress.html), with the canonical domain in [design/1_mvp.html](../../../design/1_mvp.html) and [the ERD](../../../design/2_mvp_erd.png). Preserve [design/4_shared_strategies.html](../../../design/4_shared_strategies.html) shared-strategy behavior.
 
-Planning status: ready. BE-01–BE-06 are complete. Runtime tasks BE-07–BE-12 remain not_started; area status tracks runtime delivery. Earlier logs describe historical conditions, not current blockers.
+Planning status: ready. Current execution status and evidence are recorded in the task checklist and latest loop entries.
 
 ## Tasks
 
@@ -108,13 +108,13 @@ Accepted: America/Los_Angeles calendar weeks; both teams FBS; free keys only; 20
   - Validation: Dedicated PostgreSQL migration/schema tests; downgrade/re-upgrade on disposable DB only; no migration on app startup.
   - Completion notes: Completed November 12, 2026. Added nine integration models in backend/app/models.py and additive migrations/versions/0004_add_ingress_persistence.py: provider mappings, season-scoped team aliases, paired quote observations, result-change audit, refresh runs with database-issued generation numbers, weekly buckets, provider quota periods/call reservations, and season-calendar cache. Existing domain tables and earlier migrations are unchanged. Added backend/tests/test_ingress_persistence.py and extended backend/tests/test_migrations.py. Validation covers exact decimals, timezone-aware timestamps, unique identities/content/current projections, orphan and invalid-record rejection, zero-line spreads, restrictive history references, persistence across connection-pool recreation, logged PostgreSQL tables, and upgrade/downgrade/re-upgrade with preserved domain data and no Alembic drift. Full PostgreSQL-enabled backend suite: 134 passed, one upstream TestClient warning, no skipped tests. All migration cycles used generated disposable databases; no development database migration or live provider calls were performed. Runtime locking, admission, quota enforcement, imports, and API integration remain BE-07–BE-11 work.
 
-- [ ] BE-07 — Enforce atomic refresh and quota admission
-  - Status: not_started
+- [x] BE-07 — Enforce atomic refresh and quota admission
+  - Status: complete
   - Scope: Ownership, weekly attempts, Sunday reservation, cooldown, conservative provider call accounting, reset metadata, and abandoned-run recovery.
   - Dependencies: BE-05, BE-06.
   - Acceptance criteria: At most 18 accepted attempts before Sunday and 20 on Sunday; repeated/concurrent tabs cannot overspend; rejected preflight consumes none; external-work failures consume one; Monday does not reset provider monthly usage; costs stay inside free allowances with 10% reserve.
   - Validation: PostgreSQL concurrent requests, restart recovery, fake provider timeouts, lock loss/fencing, unknown call outcomes, month/week boundaries, and provider external-use reconciliation.
-  - Completion notes: Pending.
+  - Completion notes: Implemented durable refresh admission, fencing, weekly/provider quotas, recovery, and regression tests. Focused tests: 21 passed; 18 PostgreSQL tests await runner verification because Docker access is denied. Syntax and whitespace checks passed. Full local suite was interrupted without results. Manual missing-key and credentialed checks remain pending. No protected files or Git operations changed. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend automated tests including disposable PostgreSQL databases passed. Files: backend/app/ingress.py, backend/app/refresh_admission.py, backend/tests/test_ingress.py, backend/tests/test_refresh_admission.py, progress/3_1_game_info_ingress/backend/plan.md, ralph/ingress-backend.progress.json. Logs: .git/ralph/ba4de0cad3499cfc/BE-07-005.*. Automated implementation checks only. The manual missing-key HTTP smoke test and credentialed provider verification remain pending until CHIP runs them separately.
 
 - [ ] BE-08 — Import canonical CFBD games/results
   - Status: not_started
@@ -196,3 +196,10 @@ All BE-05–BE-12 complete and validated; explicit free-provider refresh persist
 - Affected files: backend/app/models.py, migrations/versions/0004_add_ingress_persistence.py, backend/tests/test_ingress_persistence.py, and backend/tests/test_migrations.py. This requested follow-up updates status/evidence in this plan only.
 - Limitations: Persistence across reconnects was tested; the development PostgreSQL server was not restarted or migrated. No provider credentials or live API calls were used. Runtime refresh enforcement is not claimed by BE-06.
 - Next: BE-07 — atomic refresh ownership and quota admission.
+
+### 2026-11-14 20:18 UTC — BE-07 Ralph execution
+
+- Completed tasks: BE-07.
+- Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend automated tests including disposable PostgreSQL databases passed.
+- Completion notes: Implemented durable refresh admission, fencing, weekly/provider quotas, recovery, and regression tests. Focused tests: 21 passed; 18 PostgreSQL tests await runner verification because Docker access is denied. Syntax and whitespace checks passed. Full local suite was interrupted without results. Manual missing-key and credentialed checks remain pending. No protected files or Git operations changed.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
