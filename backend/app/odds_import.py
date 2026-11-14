@@ -14,6 +14,7 @@ from sqlalchemy import select
 from app.cfbd_import import identity, name, timestamp
 from app.ingress import ProviderError
 from app.models import Game, Market, Selection, ProviderGameLink, QuoteObservation, TeamAlias, RefreshRun
+from app.odds_aliases import seed_odds_aliases
 from app.refresh_admission import AdmissionRejected
 
 
@@ -147,6 +148,7 @@ class OddsImporter:
                         and scope.get("fetched_at") is not None
                         and timestamp(scope["fetched_at"]) >= fetched):
                     return outcome
+            seed_odds_aliases(session)
             games = self.eligible(session, window)
             resolved = {}
             failures = list(run.item_failures or [])
