@@ -136,7 +136,7 @@ def create_run(session: Session, body: RunCreate, key: UUID):
     now = utc_now()
     groups, skips = [], {}
     for game_id in body.game_ids:
-        candidates, skip = resolve_candidates(by_id[game_id], now)
+        candidates, skip = resolve_candidates(by_id[game_id], now, session)
         groups.append(candidates)
         if skip:
             skips[game_id] = skip.reason
@@ -145,7 +145,7 @@ def create_run(session: Session, body: RunCreate, key: UUID):
     placed_at = utc_now()
     retained = []
     for decision in decisions:
-        _, skip = resolve_candidates(by_id[decision.game_id], placed_at)
+        _, skip = resolve_candidates(by_id[decision.game_id], placed_at, session)
         if skip:
             skips[decision.game_id] = skip.reason
         else:

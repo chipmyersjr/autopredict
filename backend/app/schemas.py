@@ -9,6 +9,24 @@ from pydantic import BaseModel, ConfigDict, field_serializer
 from pydantic import Field, field_validator
 
 
+class RefreshRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class RefreshResponse(BaseModel):
+    success: bool
+    reason: Literal["refreshed", "no_games", "partial_failure", "provider_failure",
+                    "weekly_limit", "sunday_reserve", "cooldown", "provider_budget",
+                    "provider_rate_limit", "refresh_in_progress", "configuration_error",
+                    "database_unavailable"]
+    message: str
+    remaining_refreshes: int | None
+    reserved_for_sunday: int
+    retry_at: datetime | None
+    data_changed: bool
+    run_id: UUID | None
+
+
 class TimestampResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

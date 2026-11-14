@@ -1,9 +1,9 @@
 """Database-only read endpoints for stored games and spread markets."""
 
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Body
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -12,6 +12,10 @@ from app.models import Game, Market, Strategy
 from app.schemas import GameResponse, MarketResponse
 from app.schemas import StrategyCreate, StrategyResponse, DecisionRequest, DecisionResponse
 from app.strategies import utc_now, resolve_candidates, random_decisions
+from app.ingress import current_week
+from app.refresh import RefreshService
+from app.settings import Settings
+from app.schemas import RefreshRequest, RefreshResponse
 
 from fastapi import Header, Response
 from app.models import Run, Bet
@@ -31,19 +35,60 @@ def find_game(session: Session, game_id: UUID) -> Game:
 
 
 @router.get("/games", response_model=list[GameResponse], tags=["Games"])
-def list_games(session: DatabaseSession):
-    """Read all stored games, including demo/historical data, with markets and selections."""
-    return session.scalars(select(Game).options(GAME_GRAPH).order_by(Game.start_time.desc(), Game.id)).all()
+def list_games(session: DatabaseSession, window: Literal["current"] | None = None):
+    """Read stored games only; window=current selects the server's Pacific week.
+
+    Without window, include demo and historical games. Kickoff availability is
+    derived from one server timestamp without changing provider-confirmed status.
+    """
+    now = utc_now()
+    statement = select(Game).options(GAME_GRAPH).order_by(Game.start_time.desc(), Game.id)
+    if window == "current":
+        week = current_week(now)
+        statement = statement.where(Game.start_time >= week.start, Game.start_time < week.end)
+    return [game_view(game, now) for game in session.scalars(statement).all()]
+
+
+def game_view(game, now=None):
+    """Derive availability without writing stale source state back to storage."""
+    view = GameResponse.model_validate(game)
+    if game.status != "scheduled" or game.start_time <= (now if now is not None else utc_now()):
+        for market in view.markets:
+            for selection in market.selections:
+                selection.is_active = False
+    return view
+
+
+@router.post("/games/refresh", response_model=RefreshResponse, tags=["Games"],
+             responses={code: {"model": RefreshResponse, "description": description}
+                        for code, description in [(429, "Preflight limit"), (409, "Refresh in progress"),
+                                                  (503, "Database unavailable"), (422, "Invalid input")]})
+async def refresh_games(request: Request, response: Response,
+                        body: Annotated[RefreshRequest | None, Body()] = None):
+    """Explicit refresh of the server's Pacific week; no caller-selected window.
+
+    Finished full, partial, and provider failures return 200. data_changed tells
+    callers to reload stored games even when success is false.
+    """
+    service = RefreshService(request.app.state.database_engine, Settings())
+    if request.query_params:
+        result = service.result("configuration_error")
+        result.body["message"] = "Refresh failed: query parameters are not supported."
+        response.status_code = 422
+    else:
+        result = await service.run()
+        response.status_code = result.http_status
+    return RefreshResponse.model_validate(result.body)
 
 
 @router.get("/games/{game_id}", response_model=GameResponse, tags=["Games"], responses={404: {"description": "Game not found"}})
 def game_detail(game_id: UUID, session: DatabaseSession):
-    return find_game(session, game_id)
+    return game_view(find_game(session, game_id))
 
 
 @router.get("/games/{game_id}/markets", response_model=list[MarketResponse], tags=["Markets"], responses={404: {"description": "Game not found"}})
 def game_markets(game_id: UUID, session: DatabaseSession):
-    return find_game(session, game_id).markets
+    return game_view(find_game(session, game_id)).markets
 
 
 @router.get("/markets/{market_id}", response_model=MarketResponse, tags=["Markets"], responses={404: {"description": "Market not found"}})
@@ -51,7 +96,7 @@ def market_detail(market_id: UUID, session: DatabaseSession):
     market = session.scalar(select(Market).where(Market.id == market_id).options(selectinload(Market.selections)))
     if market is None:
         raise HTTPException(status_code=404, detail="Market not found")
-    return market
+    return next(m for m in game_view(find_game(session, market.game_id)).markets if m.id == market.id)
 
 
 def find_strategy(session: Session, strategy_id: UUID) -> Strategy:
@@ -93,7 +138,7 @@ def preview_decisions(strategy_id: UUID, body: DecisionRequest, session: Databas
     now = utc_now()
     groups, skips = [], []
     for game_id in body.game_ids:
-        candidates, skip = resolve_candidates(by_id[game_id], now)
+        candidates, skip = resolve_candidates(by_id[game_id], now, session)
         groups.append(candidates)
         if skip is not None:
             skips.append(skip)

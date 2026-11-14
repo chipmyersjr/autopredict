@@ -140,13 +140,13 @@ Accepted: America/Los_Angeles calendar weeks; both teams FBS; free keys only; 20
   - Validation: Service integration tests exercise full/empty/partial/error paths, budget changes between stages, invalid relevant items, and interrupted request recovery.
   - Completion notes: Implemented bounded refresh orchestration, independent stage commits, safe summaries, quota handling, and cancellation/deadline recovery tests. Focused checks: 47 passed, 75 PostgreSQL tests skipped; whitespace passed. Docker unavailable locally; database verification awaits runner. Manual HTTP and credentialed provider checks remain pending. No protected-file edits or Git operations performed. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend automated tests including disposable PostgreSQL databases passed. Files: backend/app/cfbd_import.py, backend/app/odds_import.py, backend/app/refresh.py, backend/tests/test_refresh.py, progress/3_1_game_info_ingress/backend/plan.md, ralph/ingress-backend.progress.json. Logs: .git/ralph/ba4de0cad3499cfc/BE-10-008.*. Automated implementation checks only. The manual missing-key HTTP smoke test and credentialed provider verification remain pending until CHIP runs them separately.
 
-- [ ] BE-11 — Expose refresh and stored current-week APIs
-  - Status: not_started
+- [x] BE-11 — Expose refresh and stored current-week APIs
+  - Status: complete
   - Scope: POST route and uniform response envelope; GET window=current filter on existing games router; cutoff-based availability using current time; preserve existing endpoints. Resolve imported quote provenance for existing strategy decisions/run snapshots from persisted observations, leaving demo provenance null.
   - Dependencies: BE-10; completed `1_1_mvp_vertical_slice_1` BE-03/BE-04/BE-05 for reusable read APIs and CORS.
   - Acceptance criteria: Contract in ingress section 7 documented in OpenAPI; static refresh route works; database-only GET; typed reason/status handling; Sunday games/results readable; unfiltered API and error semantics remain compatible; no credentials disclosed.
   - Validation: PostgreSQL API tests for 200/429/409/503/422, body fields, date filter, partial reload flag, order, server-clock kickoff cutoff, endpoint routing, health/readiness regressions and CORS; imported provenance reaches immutable run snapshots and later refreshes do not rewrite existing bets.
-  - Completion notes: Pending.
+  - Completion notes: Fixed imported selection provenance resolution and updated read-only query assertions; added regression coverage. Syntax and whitespace checks passed. Automated execution awaits runner verification because local dependencies and Docker access are unavailable. Manual missing-key and credentialed checks remain pending. No Git mutations or protected-file edits performed. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend automated tests including disposable PostgreSQL databases passed. Files: backend/app/main.py, backend/app/routes.py, backend/app/runs.py, backend/app/schemas.py, backend/app/strategies.py, backend/tests/test_cors.py, backend/tests/test_games_api.py, backend/tests/test_ingress_api.py, backend/tests/test_strategies.py, progress/3_1_game_info_ingress/backend/plan.md, ralph/ingress-backend.progress.json. Logs: .git/ralph/ba4de0cad3499cfc/BE-11-011.*. Automated implementation checks only. The manual missing-key HTTP smoke test and credentialed provider verification remain pending until CHIP runs them separately.
 
 - [ ] BE-12 — Verify and document real ingress handoff
   - Status: not_started
@@ -223,4 +223,11 @@ All BE-05–BE-12 complete and validated; explicit free-provider refresh persist
 - Completed tasks: BE-10.
 - Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend automated tests including disposable PostgreSQL databases passed.
 - Completion notes: Implemented bounded refresh orchestration, independent stage commits, safe summaries, quota handling, and cancellation/deadline recovery tests. Focused checks: 47 passed, 75 PostgreSQL tests skipped; whitespace passed. Docker unavailable locally; database verification awaits runner. Manual HTTP and credentialed provider checks remain pending. No protected-file edits or Git operations performed.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
+
+### 2026-11-14 20:43 UTC — BE-11 Ralph execution
+
+- Completed tasks: BE-11.
+- Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend automated tests including disposable PostgreSQL databases passed.
+- Completion notes: Fixed imported selection provenance resolution and updated read-only query assertions; added regression coverage. Syntax and whitespace checks passed. Automated execution awaits runner verification because local dependencies and Docker access are unavailable. Manual missing-key and credentialed checks remain pending. No Git mutations or protected-file edits performed.
 - Next: Continue the configured task sequence; live-provider verification remains separately reported.
