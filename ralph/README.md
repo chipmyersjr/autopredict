@@ -12,7 +12,7 @@ The JSON progress file drives task selection and resumption. After passing tests
 
 ## Run
 
-Use the SSH-connected Docker Sandbox terminal with Python 3.9+, Git, authenticated Codex CLI, and Docker available. Configure your Git author identity there if needed. Commit this tooling and existing changes first; the loop requires a clean tree/index. Avoid editing the shared project from another window or agent while it runs.
+Use a Docker Sandbox terminal with Python 3.9+, Git, authenticated Codex CLI, and Docker available. Open it from your regular terminal with `sbx exec -it autopredict-dev bash`; SSH is optional. Configure your Git author identity there if needed. Commit this tooling and existing changes first; the loop requires a clean tree/index. Avoid editing the shared project from another window or agent while it runs.
 
 ```sh
 make ralph-preview                       # Show tasks and checks; no edits/model calls
@@ -23,6 +23,18 @@ make ralph RALPH_ARGS="--resume"          # Continue after inspecting a stopped 
 ```
 
 Launching `make ralph` explicitly authorizes generated progress and plan updates for this run, as CHIP requested. For a different plan use `RALPH_CONFIG=ralph/your-run.json`.
+
+### Ingress frontend: FE-01 through FE-03
+
+```sh
+make ralph-preview RALPH_CONFIG=ralph/ingress-frontend.json
+make ralph RALPH_CONFIG=ralph/ingress-frontend.json
+make ralph RALPH_CONFIG=ralph/ingress-frontend.json RALPH_ARGS="--resume"
+```
+
+The frontend configuration runs FE-01 → FE-03 → FE-02, preserving stable IDs while respecting FE-02's dependency on the imported spread fix. Run the configuration without `--through FE-03` to include all three tasks. Completed backend prerequisites are recorded in the structured progress file. The loop uses one local commit per task.
+
+Each task builds the existing frontend Docker image, mounts browser tests/configuration into a disposable container, installs Chromium and its OS dependencies there, and runs TypeScript/Vite checks plus Playwright. No host Node/browser installation, backend startup, database changes, or real API keys are required. Existing live-backend tests stay opt-in; controlled browser tests are mandatory and live-provider validation remains separate. Browser artifacts remain in the disposable container; runner command output is retained under `.git/ralph/`.
 
 The equivalent CLI is:
 

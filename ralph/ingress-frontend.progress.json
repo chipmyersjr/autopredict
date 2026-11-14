@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "plan": "progress/3_1_game_info_ingress/front_end/plan.md",
+  "area_status": "not_started",
+  "tasks": {
+    "BE-09": {"title": "Backend prerequisite: paired current odds and observations", "status": "complete"},
+    "BE-11": {"title": "Backend prerequisite: refresh and stored current-week APIs", "status": "complete"},
+    "BE-12": {"title": "Backend prerequisite: automated ingress handoff", "status": "complete"},
+    "FE-01": {"title": "Add Refresh button and popup", "status": "not_started"},
+    "FE-03": {"title": "Fix imported spread eligibility and team labels", "status": "not_started"},
+    "FE-02": {"title": "Validate minimal refresh flow", "status": "not_started"}
+  }
+}
