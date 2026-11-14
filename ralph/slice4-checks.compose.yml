@@ -1,0 +1,22 @@
+services:
+  ralph-browser:
+    image: autopredict-ralph-browser:dev
+    build:
+      context: .
+      dockerfile: ralph/browser.Dockerfile
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-autopredict}
+      POSTGRES_USER: ${POSTGRES_USER:-autopredict}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-autopredict_local}
+      CFBD_API_KEY: ""
+      ODDS_API_KEY: ""
+      PLAYWRIGHT_CHANNEL: chromium
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ./frontend/tests:/app/frontend/tests:ro
+      - ./frontend/playwright.config.ts:/app/frontend/playwright.config.ts:ro
+      - ./scripts/ralph_browser_check.py:/checks/browser_check.py:ro
+    shm_size: 1gb
+    command: ["python", "/checks/browser_check.py"]

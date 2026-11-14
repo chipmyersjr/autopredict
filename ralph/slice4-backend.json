@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "plan": "progress/1_4_mvp_vertical_slice_4/backend/plan.md",
+  "progress_file": "ralph/slice4-backend.progress.json",
+  "context": ["design/1_mvp.html", "design/3_game_info_ingress.html", "design/4_shared_strategies.html", "progress/1_4_mvp_vertical_slice_4/front_end/plan.md", "ralph/README.md"],
+  "allowed_paths": ["backend/app/*", "backend/tests/*", "backend/pyproject.toml", "backend/uv.lock", "migrations/versions/*", "frontend/tests/support/*", "README.md"],
+  "protected_paths": ["backend/Dockerfile", "frontend/Dockerfile", "docker-compose.yml", "Makefile", ".dockerignore", "migrations/versions/0001_create_games_markets_and_selections.py", "migrations/versions/0002_create_strategies.py", "migrations/versions/0003_create_runs_bets.py", "migrations/versions/0004_add_ingress_persistence.py"],
+  "environment": {"CFBD_API_KEY": "", "ODDS_API_KEY": "", "ENV_FILE": ".env"},
+  "max_attempts": 3,
+  "task_timeout": 3600,
+  "instructions": "Implement only the selected settlement backend task. Preserve ingress, creation idempotency, shared strategies, saved bet snapshots and historical outcomes. No real provider calls, production score-editing endpoints, automatic settlement, or regrading. The plans predate delivered ingress: inspect current code and actual migration head, do not assume ingress is absent. Support both imported role sides and legacy saved team-name sides where the existing execution contract permits them. Use Decimal and independently known numeric test oracles. Keep README concise. BE-04 must prepare the guarded frontend/tests/support/live_backend.py fixture and deterministic HTTP acceptance tests so the subsequent frontend loop can run create/finalize/settle/reload in a disposable database. Preserve its existing --metadata, --port, --origin, and --mutate-run interfaces; extend it safely for settlement scenarios. Do not mutate development/provider records. The final cross-area browser evidence depends on FE-04 and remains pending until that later frontend task; never claim it passed during this backend phase. If this prevents the selected task's acceptance, report blocked rather than falsely mark complete. The runner handles progress/plan updates and commits; no edits to design, runner/configs, Git state, or frontend UI.",
+  "completion_note": "Backend verification only; full-epic live browser acceptance is performed later by frontend FE-04. No live-provider verification is implied.",
+  "checks": [
+    {"name": "Whitespace", "argv": ["git", "diff", "--check"], "timeout": 15},
+    {"name": "Start sandbox database", "argv": ["make", "db"], "timeout": 120},
+    {"name": "Build backend dependencies", "argv": ["docker", "compose", "build", "backend"], "timeout": 600},
+    {"name": "Backend regressions with disposable PostgreSQL databases", "argv": ["docker", "compose", "run", "--rm", "--no-deps", "--volume", "{repo}/backend/tests:/app/backend/tests:ro", "--volume", "{repo}/frontend/tests/support:/app/frontend/tests/support:ro", "--env", "RUN_POSTGRES_TESTS=1", "--env", "CFBD_API_KEY=", "--env", "ODDS_API_KEY=", "--env", "PYTHONDONTWRITEBYTECODE=1", "backend", "python", "-m", "pytest", "-p", "no:cacheprovider", "-q"], "timeout": 600}
+  ],
+  "tasks": [
+    {"id": "BE-01", "dependencies": []},
+    {"id": "BE-02", "dependencies": ["BE-01"]},
+    {"id": "BE-03", "dependencies": ["BE-02"]},
+    {"id": "BE-04", "dependencies": ["BE-01", "BE-02", "BE-03"]}
+  ]
+}

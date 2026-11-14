@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "plan": "progress/1_4_mvp_vertical_slice_4/front_end/plan.md",
+  "progress_file": "ralph/slice4-frontend.progress.json",
+  "context": ["design/1_mvp.html", "design/3_game_info_ingress.html", "design/4_shared_strategies.html", "progress/1_4_mvp_vertical_slice_4/backend/plan.md", "ralph/README.md"],
+  "allowed_paths": ["frontend/src/*", "frontend/tests/*", "frontend/package.json", "frontend/package-lock.json", "frontend/playwright.config.ts", "frontend/tsconfig.json", "frontend/vite.config.ts", "frontend/index.html"],
+  "protected_paths": ["backend/Dockerfile", "frontend/Dockerfile", "docker-compose.yml", "Makefile", ".dockerignore"],
+  "environment": {"CFBD_API_KEY": "", "ODDS_API_KEY": "", "ENV_FILE": ".env"},
+  "max_attempts": 3,
+  "task_timeout": 3600,
+  "instructions": "Implement only the selected settlement frontend task using delivered backend contracts. Read the completed sibling backend plan/code; do not edit backend, migrations, design, runner/configuration, or Git state. Preserve Games Refresh, previews, creation/recovery, history, role-based spread labels/eligibility and shared strategy behavior. Use exact decimal-string display and no client settlement arithmetic. FE-04 must add and run actual PostgreSQL-backed Playwright acceptance, not only mocked API routes. The runner's browser image contains Node, Chromium, Python backend dependencies and /app/backend/.venv pointing to /opt/venv. Its live check starts frontend/tests/support/live_backend.py with --metadata, --port 8017, and --origin http://127.0.0.1:5175; provides TEST_API_BASE_URL, LIVE_API=1 and LIVE_RUN_DB_FILE; then runs the full browser suite. Extend the guarded test fixture/tests for settlement without production score APIs or development DB mutations. Verify the independent mixed-Run oracle, win/loss/push/void/pending, no duplicate profit on retries, persisted snapshots, dashboard reload and desktop/mobile behavior. Do not skip required acceptance scenarios or weaken assertions. Keep live checks opt-in outside FE-04. Do not claim live-provider result integration from disposable fixtures. The runner updates plans/progress and commits each verified task.",
+  "completion_note": "Provider keys remain blank. Controlled browser checks run for FE-01–FE-03; FE-04 additionally requires the real API and disposable PostgreSQL browser flow. Live-provider integration is separate.",
+  "checks": [
+    {"name": "Whitespace", "argv": ["git", "diff", "--check"], "timeout": 15},
+    {"name": "Start sandbox database", "argv": ["make", "db"], "timeout": 120},
+    {"name": "Build current backend and fixture dependencies", "argv": ["docker", "compose", "build", "backend"], "timeout": 600},
+    {"name": "Build isolated browser check image", "argv": ["docker", "compose", "-f", "docker-compose.yml", "-f", "ralph/slice4-checks.compose.yml", "build", "ralph-browser"], "timeout": 900}
+  ],
+  "tasks": [
+    {"id": "FE-01", "dependencies": [], "checks": [{"name": "Frontend build and controlled browser regressions", "argv": ["docker", "compose", "-f", "docker-compose.yml", "-f", "ralph/slice4-checks.compose.yml", "run", "--rm", "--no-deps", "ralph-browser"], "timeout": 600}]},
+    {"id": "FE-02", "dependencies": ["FE-01"], "checks": [{"name": "Frontend build and controlled browser regressions", "argv": ["docker", "compose", "-f", "docker-compose.yml", "-f", "ralph/slice4-checks.compose.yml", "run", "--rm", "--no-deps", "ralph-browser"], "timeout": 600}]},
+    {"id": "FE-03", "dependencies": ["FE-01", "FE-02"], "checks": [{"name": "Frontend build and controlled browser regressions", "argv": ["docker", "compose", "-f", "docker-compose.yml", "-f", "ralph/slice4-checks.compose.yml", "run", "--rm", "--no-deps", "ralph-browser"], "timeout": 600}]},
+    {"id": "FE-04", "dependencies": ["FE-01", "FE-02", "FE-03"], "checks": [{"name": "Build and real-API PostgreSQL browser acceptance", "argv": ["docker", "compose", "-f", "docker-compose.yml", "-f", "ralph/slice4-checks.compose.yml", "run", "--rm", "--no-deps", "ralph-browser", "python", "/checks/browser_check.py", "--live"], "timeout": 900}]}
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "plan": "progress/1_4_mvp_vertical_slice_4/front_end/plan.md",
+  "area_status": "not_started",
+  "tasks": {
+    "FE-01": {"title": "Add settlement and dashboard API clients", "status": "not_started"},
+    "FE-02": {"title": "Add Run settlement and partial/final accounting views", "status": "not_started"},
+    "FE-03": {"title": "Add dashboard results and basic performance visualization", "status": "not_started"},
+    "FE-04": {"title": "Prove the complete resolution flow without ingress", "status": "not_started"}
+  }
+}

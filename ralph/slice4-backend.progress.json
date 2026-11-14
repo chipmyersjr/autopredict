@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "plan": "progress/1_4_mvp_vertical_slice_4/backend/plan.md",
+  "area_status": "not_started",
+  "tasks": {
+    "BE-01": {"title": "Add settlement evidence and pure spread accounting", "status": "not_started"},
+    "BE-02": {"title": "Implement atomic per-Run settlement and extended history", "status": "not_started"},
+    "BE-03": {"title": "Add persisted dashboard aggregates", "status": "not_started"},
+    "BE-04": {"title": "Validate and document the full resolution handoff", "status": "not_started"}
+  }
+}
