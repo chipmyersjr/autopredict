@@ -8,11 +8,19 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 RUNNER = Path(__file__).resolve().parents[1] / "ralph.py"
 spec = importlib.util.spec_from_file_location("ralph", RUNNER)
 ralph = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ralph)
+
+
+class TimestampTests(unittest.TestCase):
+    def test_missing_timezone_data_falls_back_to_utc(self):
+        with patch.object(ralph, "ZoneInfo", side_effect=ralph.ZoneInfoNotFoundError):
+            stamp = ralph.log_timestamp()
+        self.assertRegex(stamp, r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$")
 
 PLAN = """# Example task plan
 

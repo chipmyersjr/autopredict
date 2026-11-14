@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import argparse
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 import fcntl
 import fnmatch
 import hashlib
@@ -22,7 +22,7 @@ import signal
 import subprocess
 import sys
 import time
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 class LoopError(Exception):
@@ -42,6 +42,14 @@ SCHEMA = {
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
+
+
+def log_timestamp():
+    try:
+        zone = ZoneInfo("America/Los_Angeles")
+    except ZoneInfoNotFoundError:
+        zone = timezone.utc
+    return datetime.now(zone).strftime("%Y-%m-%d %H:%M %Z")
 
 
 def git(root, *args):
@@ -413,7 +421,7 @@ def run(root, config, config_path, chosen, args, storage):
         else:
             raise LoopError("Attempt limit reached for " + task_id + "; changes/logs preserved. Inspect, then --resume")
         summary = " ".join(result["summary"].split())
-        now = datetime.now(ZoneInfo("America/Los_Angeles")).strftime("%Y-%m-%d %H:%M %Z")
+        now = log_timestamp()
         note = f"{summary} Independent checks: {'; '.join(evidence)}. Files: {', '.join(names)}. Logs: .git/ralph/{key}/{stem}.*."
         if config.get("completion_note"):
             note += " " + config["completion_note"]
