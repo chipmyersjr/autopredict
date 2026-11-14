@@ -131,6 +131,10 @@ class ProviderClients:
     def cfbd_configured(self):
         return bool(self._settings.cfbd_api_key.get_secret_value().strip())
 
+    @property
+    def odds_configured(self):
+        return bool(self._settings.odds_api_key.get_secret_value().strip())
+
     async def _get(self, provider: str, path: str, params: dict):
         key = (self._settings.cfbd_api_key if provider == "cfbd"
                else self._settings.odds_api_key).get_secret_value()

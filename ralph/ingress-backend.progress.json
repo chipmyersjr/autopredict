@@ -66,7 +66,21 @@
     },
     "BE-09": {
       "title": "Import paired current odds and observations",
-      "status": "not_started"
+      "status": "complete",
+      "summary": "Implemented paired odds import, strict matching, deterministic bookmaker selection, atomic projection/history, quota accounting, and stale-response fencing. Focused tests: 46 passed; 61 PostgreSQL tests await runner verification. Whitespace passed. Manual HTTP and credentialed checks remain pending. No Git operations or protected-file edits performed.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build backend dependencies passed",
+        "Backend automated tests including disposable PostgreSQL databases passed"
+      ],
+      "files": [
+        "backend/app/ingress.py",
+        "backend/app/odds_import.py",
+        "backend/tests/test_odds_import.py",
+        "progress/3_1_game_info_ingress/backend/plan.md",
+        "ralph/ingress-backend.progress.json"
+      ]
     },
     "BE-10": {
       "title": "Orchestrate bounded on-demand refresh",
