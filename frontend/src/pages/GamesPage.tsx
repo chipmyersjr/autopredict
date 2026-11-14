@@ -12,14 +12,24 @@ const kickoffFormat = new Intl.DateTimeFormat(undefined, {
   weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
   hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
 })
+function teamLabel(game: Game | undefined, side: string): string {
+  if (side === 'home') return game?.home_team ?? side
+  if (side === 'away') return game?.away_team ?? side
+  return side
+}
 export function unavailableReason(game: Game, now = Date.now()): string | null {
   if (game.status !== 'scheduled') return 'Game is not scheduled'
   if (!Number.isFinite(Date.parse(game.start_time))) return 'Kickoff unknown'
   if (Date.parse(game.start_time) <= now) return 'Kickoff reached'
   const valid = game.markets.some(m => {
     const pair = m.selections.filter(s => s.is_active)
+    const sides = new Set(pair.map(s => s.side))
+    const completeSides = sides.size === 2 && (
+      (sides.has('home') && sides.has('away')) ||
+      (sides.has(game.home_team) && sides.has(game.away_team))
+    )
     return m.type === 'spread' && m.status === 'active' && pair.length === 2 && game.home_team !== game.away_team &&
-      new Set(pair.map(s => s.side)).size === 2 && pair.every(s => [game.home_team, game.away_team].includes(s.side) && s.line !== null && Number.isFinite(Number(s.line)) && Number.isFinite(Number(s.price)) && Number(s.price) > 1) && Number(pair[0].line) === -Number(pair[1].line)
+      completeSides && pair.every(s => s.line !== null && s.line.trim() !== '' && Number.isFinite(Number(s.line)) && Number.isFinite(Number(s.price)) && Number(s.price) > 1) && Number(pair[0].line) === -Number(pair[1].line)
   })
   return valid ? null : 'No eligible paired spread'
 }
@@ -49,7 +59,7 @@ function GameCard({ game, selected, toggle, now }: { game: Game; selected: boole
             <h3>Spread{markets.length > 1 ? ` · Market ${index + 1}` : ''}</h3>
             <ul className="selections">{market.selections.map(selection => (
               <li key={selection.id}>
-                <span className="selection-team">{selection.side}</span>
+                <span className="selection-team">{teamLabel(game, selection.side)}</span>
                 <strong className="line">{formatLine(selection.line!)}</strong>
                 <span className="price">Decimal odds <strong>{selection.price}</strong></span>
               </li>
@@ -189,7 +199,7 @@ export default function GamesPage() {
           {!preview.decisions.length && <p>No eligible games — all selected games were skipped.</p>}
           <ul>{preview.decisions.map(d => <li key={d.game_id}>
             <p>{state.games.find(g => g.id === d.game_id)?.away_team} at {state.games.find(g => g.id === d.game_id)?.home_team}</p>
-            <strong>{d.side} {formatLine(d.line)}</strong> · Decimal odds <strong>{d.price}</strong>
+            <strong>{teamLabel(state.games.find(g => g.id === d.game_id), d.side)} {formatLine(d.line)}</strong> · Decimal odds <strong>{d.price}</strong>
             {d.quote_provenance && <p>Saved quote from {d.quote_provenance.bookmaker} · Fetched {d.quote_provenance.fetched_at}{d.quote_provenance.source_timestamp && ` · Source ${d.quote_provenance.source_timestamp}`}</p>}
           </li>)}</ul>
           <ul>{preview.skipped_games.map(skip => <li key={skip.game_id}>{state.games.find(g => g.id === skip.game_id)?.away_team} at {state.games.find(g => g.id === skip.game_id)?.home_team}: {{ game_not_scheduled: 'Game is not scheduled', kickoff_reached: 'Kickoff reached', spread_unavailable: 'Spread unavailable' }[skip.reason]}</li>)}</ul>
