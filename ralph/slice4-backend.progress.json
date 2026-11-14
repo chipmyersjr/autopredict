@@ -26,7 +26,22 @@
     },
     "BE-02": {
       "title": "Implement atomic per-Run settlement and extended history",
-      "status": "not_started"
+      "status": "complete",
+      "summary": "Implemented atomic settlement, extended Run/Bet history, and PostgreSQL regression tests covering accounting, retries, concurrency, locking, and rollback. Syntax and whitespace checks passed. Docker access denied locally; runner verification required. FE-04 browser evidence remains pending. No protected files or Git state changed.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build backend dependencies passed",
+        "Backend regressions with disposable PostgreSQL databases passed"
+      ],
+      "files": [
+        "backend/app/routes.py",
+        "backend/app/runs.py",
+        "backend/app/schemas.py",
+        "backend/tests/test_run_settlement.py",
+        "progress/1_4_mvp_vertical_slice_4/backend/plan.md",
+        "ralph/slice4-backend.progress.json"
+      ]
     },
     "BE-03": {
       "title": "Add persisted dashboard aggregates",

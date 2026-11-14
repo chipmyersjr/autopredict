@@ -191,6 +191,14 @@ class RunResponse(TimestampResponse):
     bet_count: int
     committed_stake: Decimal
     available_bankroll: Decimal
+    current_bankroll: Decimal
+    settled_stake: Decimal
+    open_bet_count: int
+    settled_bet_count: int
+    win_count: int
+    loss_count: int
+    push_count: int
+    void_count: int
     skipped_games: list[SkippedGame]
 
     @field_serializer("start_time", "end_time")
@@ -216,6 +224,9 @@ class BetResponse(TimestampResponse):
     profit: Decimal | None
     placed_at: datetime
     settled_at: datetime | None
+    settlement_home_score: int | None
+    settlement_away_score: int | None
+    settlement_game_status: str | None
     quote_provenance: QuoteProvenance | None
 
     @field_serializer("kickoff_at_placement", "placed_at", "settled_at")
@@ -227,3 +238,15 @@ class RunCreationResponse(BaseModel):
     run: RunResponse
     bets: list[BetResponse]
     skipped_games: list[SkippedGame]
+
+
+class PendingGame(BaseModel):
+    game_id: UUID
+    reason: Literal["game_not_final", "final_scores_missing"]
+
+
+class SettlementResponse(BaseModel):
+    run: RunResponse
+    bets: list[BetResponse]
+    settled_bet_ids: list[UUID]
+    pending_games: list[PendingGame]

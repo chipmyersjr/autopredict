@@ -1,5 +1,5 @@
 """Atomic theoretical execution and durable, user-scoped history."""
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP, localcontext
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -12,6 +12,8 @@ from app.models import Bet, Game, Market, Run, RunGame, Selection, Strategy, Use
 from app.schemas import BetDecision, BetResponse, QuoteProvenance, RunCreate, RunCreationResponse, RunResponse, SkippedGame
 from app.seed_user import LOCAL_USER_ID
 from app.strategies import random_decisions, resolve_candidates, utc_now
+from app.settlement import SettlementError, numeric, resolve_spread
+from app.schemas import SettlementResponse, PendingGame
 
 RUN_GRAPH = (selectinload(Run.games), selectinload(Run.bets))
 
@@ -32,10 +34,17 @@ def read_run(session, run_id):
 
 def run_response(run):
     committed = sum((b.stake for b in run.bets if b.status == "open"), Decimal("0.00"))
+    terminal = [b for b in run.bets if b.status != "open"]
+    current = run.starting_bankroll + (run.total_profit or Decimal("0.00"))
     return RunResponse.model_validate({
         **{field: getattr(run, field) for field in RunResponse.model_fields if hasattr(run, field)},
         "game_ids": [g.game_id for g in run.games], "bet_count": len(run.bets),
-        "committed_stake": committed, "available_bankroll": run.starting_bankroll - committed,
+        "committed_stake": committed, "available_bankroll": current - committed,
+        "current_bankroll": current,
+        "settled_stake": sum((b.stake for b in terminal), Decimal("0.00")),
+        "open_bet_count": len(run.bets) - len(terminal), "settled_bet_count": len(terminal),
+        **{name: sum(b.status == status for b in terminal) for name, status in
+           [("win_count", "won"), ("loss_count", "lost"), ("push_count", "pushed"), ("void_count", "void")]},
         "skipped_games": [SkippedGame(game_id=g.game_id, reason=g.skip_reason) for g in run.games if g.skip_reason],
     })
 
@@ -57,6 +66,71 @@ def ordered_bets(run):
 def result(run):
     response = run_response(run)
     return RunCreationResponse(run=response, bets=ordered_bets(run), skipped_games=response.skipped_games)
+
+
+def settle_run(session: Session, run_id: UUID):
+    """Lock Games before Run/Bets; terminal rows are the retry boundary."""
+    owner = local_user(session)
+    # Discover immutable references without taking a Run lock ahead of Games.
+    exists = session.scalar(select(Run.id).where(Run.id == run_id, Run.user_id == owner))
+    if exists is None:
+        raise HTTPException(404, "Run not found")
+    game_ids = select(Bet.game_id).where(Bet.run_id == run_id)
+    games = session.scalars(select(Game).where(Game.id.in_(game_ids)).order_by(Game.id)
+                           .with_for_update().execution_options(populate_existing=True)).all()
+    run = session.scalar(select(Run).where(Run.id == run_id, Run.user_id == owner)
+                         .with_for_update().execution_options(populate_existing=True))
+    if run is None:
+        raise HTTPException(404, "Run not found")
+    bets = session.scalars(select(Bet).where(Bet.run_id == run_id).order_by(Bet.id)
+                          .with_for_update().execution_options(populate_existing=True)).all()
+    set_committed_value(run, "bets", bets)
+    by_id = {game.id: game for game in games}
+    newly_settled = set()
+    now = utc_now()
+    try:
+        with localcontext() as context:
+            context.prec = 40
+            for bet in bets:
+                if bet.status != "open":
+                    continue
+                game = by_id[bet.game_id]
+                resolution = resolve_spread(
+                    side=bet.side, home_team=bet.home_team, away_team=bet.away_team,
+                    line=bet.line, price=bet.price, stake=bet.stake,
+                    game_status=game.status, home_score=game.home_score, away_score=game.away_score)
+                if resolution is None:
+                    continue
+                bet.status = bet.result = resolution.result
+                bet.profit = resolution.profit
+                bet.settlement_game_status = resolution.settlement_game_status
+                bet.settlement_home_score = resolution.settlement_home_score
+                bet.settlement_away_score = resolution.settlement_away_score
+                bet.settled_at = now
+                newly_settled.add(bet.id)
+            if newly_settled:
+                profit = sum((b.profit for b in bets if b.status != "open"), Decimal("0.00"))
+                current = run.starting_bankroll + profit
+                roi = (profit / run.starting_bankroll).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+                numeric(profit, 12, 2)
+                numeric(current, 12, 2)
+                numeric(roi, 8, 4)
+                run.total_profit, run.roi = profit, roi
+                if all(b.status != "open" for b in bets):
+                    run.status, run.final_bankroll, run.end_time = "completed", current, now
+            session.flush()
+            # Serialize before commit from the locked state, including updated_at.
+            ordered = ordered_bets(run)
+            pending = [PendingGame(game_id=g.game_id, reason=(
+                "final_scores_missing" if by_id[g.game_id].status == "completed" else "game_not_final"))
+                for g in run.games if any(b.game_id == g.game_id and b.status == "open" for b in bets)]
+            response = SettlementResponse(run=run_response(run), bets=ordered,
+                settled_bet_ids=[b.id for b in ordered if b.id in newly_settled], pending_games=pending)
+            session.commit()
+            return response
+    except SettlementError:
+        session.rollback()
+        raise HTTPException(409, "Invalid settlement snapshot or accounting overflow") from None
 
 
 class DryRunAdapter:

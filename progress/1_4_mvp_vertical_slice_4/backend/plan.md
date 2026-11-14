@@ -62,13 +62,13 @@ Independent mixed-Run oracle: bankroll 100.00, four stakes of 10.00; one win at 
   - Validation: Table-driven known-result unit tests, half-cent boundaries, zero/negative spreads, null scores, cancellation, changed quote/team labels; disposable PostgreSQL upgrade/downgrade/re-upgrade and Alembic drift/constraint checks.
   - Completion notes: Implemented additive settlement evidence migration/constraints, pure Decimal spread resolution, and unit/PostgreSQL tests. Focused checks: 38 passed; whitespace passed. PostgreSQL checks await runner verification because Docker access is denied; broader local suite was interrupted. No plan, design, runner, or Git-state edits. FE-04 browser evidence remains pending. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: backend/app/models.py, backend/app/settlement.py, backend/tests/test_ingress_persistence.py, backend/tests/test_settlement.py, backend/tests/test_settlement_persistence.py, migrations/versions/0005_add_settlement_evidence.py, progress/1_4_mvp_vertical_slice_4/backend/plan.md, ralph/slice4-backend.progress.json. Logs: .git/ralph/64d424df51d8dd0a/BE-01-001.*. Backend verification only; full-epic live browser acceptance is performed later by frontend FE-04. No live-provider verification is implied.
 
-- [ ] BE-02 — Implement atomic per-Run settlement and extended history
-  - Status: not_started
+- [x] BE-02 — Implement atomic per-Run settlement and extended history
+  - Status: complete
   - Scope: Add settlement service, POST route, evidence responses, accurate partial/final Run metrics and extended existing serializers.
   - Dependencies: BE-01.
   - Acceptance criteria: Owned stored results settle once; partial/no-op/retry behavior matches contract; completed timestamps remain stable; snapshots/creation identity remain immutable; transactional rollback prevents partial credit.
   - Validation: PostgreSQL API tests for mixed oracle, all-pending/missing scores/canceled/skipped games, independent Runs on one game, concurrent same-Run POSTs, score-writer locking, injected failure rollback, overflow, lost response/restart retry, ownership, 404/409/422/503, OpenAPI and creation replay after settlement. Prove GET calls issue no writes.
-  - Completion notes: Not implemented or validated.
+  - Completion notes: Implemented atomic settlement, extended Run/Bet history, and PostgreSQL regression tests covering accounting, retries, concurrency, locking, and rollback. Syntax and whitespace checks passed. Docker access denied locally; runner verification required. FE-04 browser evidence remains pending. No protected files or Git state changed. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: backend/app/routes.py, backend/app/runs.py, backend/app/schemas.py, backend/tests/test_run_settlement.py, progress/1_4_mvp_vertical_slice_4/backend/plan.md, ralph/slice4-backend.progress.json. Logs: .git/ralph/64d424df51d8dd0a/BE-02-002.*. Backend verification only; full-epic live browser acceptance is performed later by frontend FE-04. No live-provider verification is implied.
 
 - [ ] BE-03 — Add persisted dashboard aggregates
   - Status: not_started
@@ -104,4 +104,11 @@ BE-01 → BE-02 → BE-03 → BE-04. Frontend FE-01 may begin from this settled 
 - Completed tasks: BE-01.
 - Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
 - Completion notes: Implemented additive settlement evidence migration/constraints, pure Decimal spread resolution, and unit/PostgreSQL tests. Focused checks: 38 passed; whitespace passed. PostgreSQL checks await runner verification because Docker access is denied; broader local suite was interrupted. No plan, design, runner, or Git-state edits. FE-04 browser evidence remains pending.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
+
+### 2026-11-14 23:45 UTC — BE-02 Ralph execution
+
+- Completed tasks: BE-02.
+- Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
+- Completion notes: Implemented atomic settlement, extended Run/Bet history, and PostgreSQL regression tests covering accounting, retries, concurrency, locking, and rollback. Syntax and whitespace checks passed. Docker access denied locally; runner verification required. FE-04 browser evidence remains pending. No protected files or Git state changed.
 - Next: Continue the configured task sequence; live-provider verification remains separately reported.
