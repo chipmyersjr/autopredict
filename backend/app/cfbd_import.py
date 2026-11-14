@@ -168,6 +168,8 @@ class CFBDImporter:
         except (ProviderError, AdmissionRejected) as error:
             outcome["status"] = "quota-blocked" if isinstance(error, AdmissionRejected) else "failed"
             outcome["reason"] = error.reason
+            if isinstance(error, AdmissionRejected) and error.retry_at is not None:
+                outcome["retry_at"] = error.retry_at.isoformat()
         with self.owner.transaction() as (session, run):
             run.stage_outcomes = {**(run.stage_outcomes or {}), "cfbd": outcome}
         return outcome

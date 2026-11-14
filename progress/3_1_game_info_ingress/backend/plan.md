@@ -132,13 +132,13 @@ Accepted: America/Los_Angeles calendar weeks; both teams FBS; free keys only; 20
   - Validation: Contract fixtures and PostgreSQL import tests for alias collisions, neutral orientation, missing/partial odds, book switching, rounding, zero line, ordering and repeat observations. Optional credentialed integration verifies free response and quota headers within limits.
   - Completion notes: Implemented paired odds import, strict matching, deterministic bookmaker selection, atomic projection/history, quota accounting, and stale-response fencing. Focused tests: 46 passed; 61 PostgreSQL tests await runner verification. Whitespace passed. Manual HTTP and credentialed checks remain pending. No Git operations or protected-file edits performed. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend automated tests including disposable PostgreSQL databases passed. Files: backend/app/ingress.py, backend/app/odds_import.py, backend/tests/test_odds_import.py, progress/3_1_game_info_ingress/backend/plan.md, ralph/ingress-backend.progress.json. Logs: .git/ralph/ba4de0cad3499cfc/BE-09-007.*. Automated implementation checks only. The manual missing-key HTTP smoke test and credentialed provider verification remain pending until CHIP runs them separately.
 
-- [ ] BE-10 — Orchestrate bounded on-demand refresh
-  - Status: not_started
+- [x] BE-10 — Orchestrate bounded on-demand refresh
+  - Status: complete
   - Scope: Compose admission/CFBD/odds stages, independent commits, quota-blocked stage handling, no-games skip, deadline/cancellation behavior, run summaries and safe popup message generation.
   - Dependencies: BE-07 through BE-09.
   - Acceptance criteria: One accepted attempt spans all calls; no odds cost when no upcoming games; partial updates retained and reported as failure; timeouts/disconnected clients do not duplicate writers or refund unknown spending; no scheduled work.
   - Validation: Service integration tests exercise full/empty/partial/error paths, budget changes between stages, invalid relevant items, and interrupted request recovery.
-  - Completion notes: Pending.
+  - Completion notes: Implemented bounded refresh orchestration, independent stage commits, safe summaries, quota handling, and cancellation/deadline recovery tests. Focused checks: 47 passed, 75 PostgreSQL tests skipped; whitespace passed. Docker unavailable locally; database verification awaits runner. Manual HTTP and credentialed provider checks remain pending. No protected-file edits or Git operations performed. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend automated tests including disposable PostgreSQL databases passed. Files: backend/app/cfbd_import.py, backend/app/odds_import.py, backend/app/refresh.py, backend/tests/test_refresh.py, progress/3_1_game_info_ingress/backend/plan.md, ralph/ingress-backend.progress.json. Logs: .git/ralph/ba4de0cad3499cfc/BE-10-008.*. Automated implementation checks only. The manual missing-key HTTP smoke test and credentialed provider verification remain pending until CHIP runs them separately.
 
 - [ ] BE-11 — Expose refresh and stored current-week APIs
   - Status: not_started
@@ -216,4 +216,11 @@ All BE-05–BE-12 complete and validated; explicit free-provider refresh persist
 - Completed tasks: BE-09.
 - Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend automated tests including disposable PostgreSQL databases passed.
 - Completion notes: Implemented paired odds import, strict matching, deterministic bookmaker selection, atomic projection/history, quota accounting, and stale-response fencing. Focused tests: 46 passed; 61 PostgreSQL tests await runner verification. Whitespace passed. Manual HTTP and credentialed checks remain pending. No Git operations or protected-file edits performed.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
+
+### 2026-11-14 20:34 UTC — BE-10 Ralph execution
+
+- Completed tasks: BE-10.
+- Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend automated tests including disposable PostgreSQL databases passed.
+- Completion notes: Implemented bounded refresh orchestration, independent stage commits, safe summaries, quota handling, and cancellation/deadline recovery tests. Focused checks: 47 passed, 75 PostgreSQL tests skipped; whitespace passed. Docker unavailable locally; database verification awaits runner. Manual HTTP and credentialed provider checks remain pending. No protected-file edits or Git operations performed.
 - Next: Continue the configured task sequence; live-provider verification remains separately reported.

@@ -123,6 +123,8 @@ class OddsImporter:
             except (ProviderError, AdmissionRejected) as error:
                 outcome.update(status="quota-blocked" if isinstance(error, AdmissionRejected) else "failed",
                                reason=error.reason)
+                if isinstance(error, AdmissionRejected) and error.retry_at is not None:
+                    outcome["retry_at"] = error.retry_at.isoformat()
         with self.owner.transaction() as (_, run):
             stages = run.stage_outcomes or {}
             run.stage_outcomes = {**stages, "odds": {**stages.get("odds", {}), **outcome}}
