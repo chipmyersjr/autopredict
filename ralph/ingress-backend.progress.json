@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "plan": "progress/3_1_game_info_ingress/backend/plan.md",
+  "area_status": "in_progress",
+  "tasks": {
+    "BE-01": {"title": "Research and draft ingress proposal", "status": "complete"},
+    "BE-02": {"title": "Publish requested design update", "status": "complete"},
+    "BE-03": {"title": "Revise proposal for free, on-demand weekly refresh", "status": "complete"},
+    "BE-04": {"title": "Finalize accepted design and implementation planning", "status": "complete"},
+    "BE-05": {"title": "Configure provider clients and Pacific week rules", "status": "complete"},
+    "BE-06": {"title": "Add integration persistence migration", "status": "complete"},
+    "BE-07": {"title": "Enforce atomic refresh and quota admission", "status": "not_started"},
+    "BE-08": {"title": "Import canonical CFBD games/results", "status": "not_started"},
+    "BE-09": {"title": "Import paired current odds and observations", "status": "not_started"},
+    "BE-10": {"title": "Orchestrate bounded on-demand refresh", "status": "not_started"},
+    "BE-11": {"title": "Expose refresh and stored current-week APIs", "status": "not_started"},
+    "BE-12": {"title": "Verify and document real ingress handoff", "status": "not_started"}
+  }
+}

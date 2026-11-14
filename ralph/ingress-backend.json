@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "plan": "progress/3_1_game_info_ingress/backend/plan.md",
+  "progress_file": "ralph/ingress-backend.progress.json",
+  "context": [
+    "design/1_mvp.html",
+    "design/3_game_info_ingress.html",
+    "design/4_shared_strategies.html",
+    "design/5_ingress_erd.png"
+  ],
+  "allowed_paths": [
+    "backend/app/*",
+    "backend/tests/*",
+    "backend/pyproject.toml",
+    "backend/uv.lock",
+    "migrations/versions/*",
+    ".env.example",
+    "README.md"
+  ],
+  "protected_paths": [
+    "backend/Dockerfile",
+    "migrations/versions/0001_create_games_markets_and_selections.py",
+    "migrations/versions/0002_create_strategies.py",
+    "migrations/versions/0003_create_runs_bets.py",
+    "migrations/versions/0004_add_ingress_persistence.py"
+  ],
+  "environment": {
+    "CFBD_API_KEY": "",
+    "ODDS_API_KEY": "",
+    "ENV_FILE": ".env"
+  },
+  "max_attempts": 3,
+  "task_timeout": 3600,
+  "completion_note": "Automated implementation checks only. The manual missing-key HTTP smoke test and credentialed provider verification remain pending until CHIP runs them separately.",
+  "instructions": "Implement only the selected backend task and preserve existing API behavior. Do not implement the frontend or settlement. Keep README short; operational evidence belongs in runner-generated plan notes. Keep automated tests for each task's acceptance criteria, including concurrent PostgreSQL admission/fencing and mocked successful/partial/error provider responses. No real provider keys or calls are required. The final actual HTTP missing-key smoke test will be performed MANUALLY by CHIP after this implementation loop, followed later by credentialed provider verification. Do not claim either manual check was performed or passed. BE-12 must document the exact missing-key expected response and manual check steps, and distinguish automated verification from those pending checks. Source status mappings and quote normalization must follow the governing design. This loop does not authorize design edits or changes to runner configuration.",
+  "checks": [
+    {"name": "Whitespace", "argv": ["git", "diff", "--check"], "timeout": 15},
+    {"name": "Start sandbox database", "argv": ["make", "db"], "timeout": 120},
+    {"name": "Build backend dependencies", "argv": ["docker", "compose", "build", "backend"], "timeout": 600},
+    {
+      "name": "Backend automated tests including disposable PostgreSQL databases",
+      "argv": ["docker", "compose", "run", "--rm", "--no-deps", "--volume", "{repo}/backend/tests:/app/backend/tests:ro", "--env", "RUN_POSTGRES_TESTS=1", "--env", "CFBD_API_KEY=", "--env", "ODDS_API_KEY=", "--env", "PYTHONDONTWRITEBYTECODE=1", "backend", "python", "-m", "pytest", "-p", "no:cacheprovider", "-q"],
+      "timeout": 600
+    }
+  ],
+  "tasks": [
+    {
+      "id": "BE-07",
+      "dependencies": ["BE-05", "BE-06"]
+    },
+    {
+      "id": "BE-08",
+      "dependencies": ["BE-07"]
+    },
+    {
+      "id": "BE-09",
+      "dependencies": ["BE-08"]
+    },
+    {
+      "id": "BE-10",
+      "dependencies": ["BE-07", "BE-08", "BE-09"]
+    },
+    {
+      "id": "BE-11",
+      "dependencies": ["BE-10"]
+    },
+    {
+      "id": "BE-12",
+      "dependencies": ["BE-07", "BE-08", "BE-09", "BE-10", "BE-11"]
+    }
+  ]
+}

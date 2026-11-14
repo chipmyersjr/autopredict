@@ -23,6 +23,7 @@ To use a private settings file outside the project, run `export ENV_FILE="$HOME/
 | `make migrate` | Apply database migrations after the initial build. |
 | `make seed` | Load demo games, the Random Strategy, and the local user after the initial build; preserve existing records. |
 | `make help` | List common commands. |
+| `make ralph-preview` / `make ralph` | Preview or run the verified task loop; see [Ralph instructions](ralph/README.md). |
 
 ## Open the app
 
