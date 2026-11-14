@@ -41,13 +41,13 @@ def handler_for(kind, requests):
             return httpx.Response(200, json=[])
         if request.url.path == "/games/schedule" and kind == "empty":
             requests.append(request)
-            return httpx.Response(200, json=[])
+            return httpx.Response(200, json={"games": []})
         if request.url.path == "/games":
             requests.append(request)
             return httpx.Response(200, json=[game()])
         if request.url.path == "/games/schedule" and kind == "invalid":
             requests.append(request)
-            return httpx.Response(200, json=[game(), game(id=402, status="unknown")])
+            return httpx.Response(200, json={"games": [game(), game(id=402, status="unknown")]})
         return base(request)
     return handler
 

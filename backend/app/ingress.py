@@ -200,9 +200,22 @@ class ProviderClients:
     async def schedule(self, week: CalendarWeek):
         # Schedule and historical /games payloads differ: normalization must not
         # assume schedule carries historical classification/final-score fields.
-        return await self._get("cfbd", "/games/schedule", {
+        payload, quota = await self._get("cfbd", "/games/schedule", {
             "year": week.season, "seasonType": week.season_type, "week": week.week,
         })
+        if not isinstance(payload, dict) or not isinstance(payload.get("games"), list):
+            raise ProviderError("invalid_schedule", quota=quota)
+        rows = []
+        for game in payload["games"]:
+            if isinstance(game, dict):
+                game = dict(game)
+                for side in ("home", "away"):
+                    team = game.get(side + "Team")
+                    if isinstance(team, dict):
+                        game[side + "Id"] = team.get("id")
+                        game[side + "Team"] = team.get("name")
+            rows.append(game)
+        return rows, quota
 
     async def season_games(self, season: int):
         return await self._get("cfbd", "/games", {"year": season})

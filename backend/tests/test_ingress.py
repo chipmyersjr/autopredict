@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from datetime import UTC, datetime, timedelta
 
@@ -60,7 +61,8 @@ def test_explicit_authenticated_contracts_and_redaction(caplog):
 
     def handler(request):
         requests.append(request)
-        return httpx.Response(200, json=[], headers={"x-requests-remaining": "499"})
+        return httpx.Response(200, json={"games": []} if request.url.path == "/games/schedule" else [],
+                              headers={"x-requests-remaining": "499"})
 
     async def run():
         settings = Settings(_env_file=None, cfbd_api_key="cfbd-secret", odds_api_key="odds-secret")
@@ -85,6 +87,41 @@ def test_explicit_authenticated_contracts_and_redaction(caplog):
     assert requests[-1].url.params["apiKey"] == "odds-secret"
     assert requests[-1].url.params["markets"] == "spreads"
     assert requests[-1].url.params["regions"] == "us"
+
+
+@pytest.mark.parametrize("games", [[], [{
+    "id": 401, "status": "scheduled", "homeTeam": {"id": 1, "name": "USC"},
+    "awayTeam": {"id": 2, "name": "UCLA"},
+}]])
+def test_schedule_unwraps_envelope_and_team_identities(games):
+    async def run():
+        transport = httpx.MockTransport(lambda request: httpx.Response(
+            200, json={"selection": "explicit", "games": games},
+            headers={"x-requests-remaining": "900"}))
+        async with ProviderClients(Settings(_env_file=None, cfbd_api_key="fake"), transport=transport) as clients:
+            week = CalendarWeek(2026, "regular", 11, stamp("2026-11-09T00:00:00Z"),
+                                stamp("2026-11-16T00:00:00Z"))
+            rows, quota = await clients.schedule(week)
+            assert quota == {"x-requests-remaining": "900"}
+            if games:
+                assert rows == [{"id": 401, "status": "scheduled", "homeId": 1,
+                                 "awayId": 2, "homeTeam": "USC", "awayTeam": "UCLA"}]
+                assert isinstance(games[0]["homeTeam"], dict)
+            else:
+                assert rows == []
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("payload", [[], None, {}, {"games": None}, {"games": {}}])
+def test_invalid_schedule_envelope_is_rejected(payload):
+    async def run():
+        transport = httpx.MockTransport(lambda request: httpx.Response(200, content=json.dumps(payload)))
+        async with ProviderClients(Settings(_env_file=None, cfbd_api_key="fake"), transport=transport) as clients:
+            week = CalendarWeek(2026, "regular", 11, stamp("2026-11-09T00:00:00Z"),
+                                stamp("2026-11-16T00:00:00Z"))
+            with pytest.raises(ProviderError, match="invalid_schedule"):
+                await clients.schedule(week)
+    asyncio.run(run())
 
 
 @pytest.mark.parametrize("status,reason", [(302, "provider_failure"), (401, "configuration_error"), (403, "configuration_error"), (429, "provider_rate_limit"), (500, "provider_failure")])

@@ -207,7 +207,11 @@ def provider_handler(requests, *, bad=False, error=False):
             schedule = deepcopy(game())
             for key in ("homeClassification", "awayClassification", "completed", "homePoints", "awayPoints"):
                 schedule.pop(key)
-            return httpx.Response(200, json=[schedule] + ([game(id=402, status="unknown")] if bad else []))
+            for side in ("home", "away"):
+                schedule[side + "Team"] = {"id": schedule.pop(side + "Id"),
+                                          "name": schedule[side + "Team"]}
+            return httpx.Response(200, json={"selection": "explicit", "games":
+                [schedule] + ([game(id=402, status="unknown")] if bad else [])})
         assert path == "/games"
         return httpx.Response(200, json=[game(completed=True, homePoints=31, awayPoints=0)])
     return handler
@@ -282,7 +286,7 @@ def test_season_history_follows_reschedule_missing_from_schedule(context):
         base = provider_handler(requests)
         def handler(request):
             if request.url.path == "/games/schedule":
-                return httpx.Response(200, json=[])
+                return httpx.Response(200, json={"games": []})
             if request.url.path == "/games":
                 return httpx.Response(200, json=[game(startDate="2026-11-20T00:00:00Z")])
             return base(request)
@@ -298,7 +302,7 @@ def test_empty_schedule_without_known_games_skips_season_query(context):
     base = provider_handler(requests)
     def handler(request):
         if request.url.path == "/games/schedule":
-            return httpx.Response(200, json=[])
+            return httpx.Response(200, json={"games": []})
         assert request.url.path != "/games"
         return base(request)
     with admission.acquire() as owner:
