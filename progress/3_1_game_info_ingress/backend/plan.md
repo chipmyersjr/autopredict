@@ -116,13 +116,13 @@ Accepted: America/Los_Angeles calendar weeks; both teams FBS; free keys only; 20
   - Validation: PostgreSQL concurrent requests, restart recovery, fake provider timeouts, lock loss/fencing, unknown call outcomes, month/week boundaries, and provider external-use reconciliation.
   - Completion notes: Implemented durable refresh admission, fencing, weekly/provider quotas, recovery, and regression tests. Focused tests: 21 passed; 18 PostgreSQL tests await runner verification because Docker access is denied. Syntax and whitespace checks passed. Full local suite was interrupted without results. Manual missing-key and credentialed checks remain pending. No protected files or Git operations changed. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend automated tests including disposable PostgreSQL databases passed. Files: backend/app/ingress.py, backend/app/refresh_admission.py, backend/tests/test_ingress.py, backend/tests/test_refresh_admission.py, progress/3_1_game_info_ingress/backend/plan.md, ralph/ingress-backend.progress.json. Logs: .git/ralph/ba4de0cad3499cfc/BE-07-005.*. Automated implementation checks only. The manual missing-key HTTP smoke test and credentialed provider verification remain pending until CHIP runs them separately.
 
-- [ ] BE-08 — Import canonical CFBD games/results
-  - Status: not_started
+- [x] BE-08 — Import canonical CFBD games/results
+  - Status: complete
   - Scope: Budgeted calendar/schedule/account calls, strict date/FBS filter, canonical identity upserts, source state mapping, and final-score audit.
   - Dependencies: BE-05 through BE-07.
   - Acceptance criteria: Provider season/week retained; both teams FBS; repeated imports duplicate nothing; rescheduling preserves identity; ambiguous/TBD/unknown status records quarantined; only explicit final with scores completes; cancellations require source evidence.
   - Validation: Provider-doc fixtures plus PostgreSQL repeated imports; Sunday finals, neutral sites, reschedules across window, FBS/FCS exclusion, invalid scores, final correction audit, stale source observations. Verify actual free-key response in normal integration if credentials are available; otherwise record that runtime limitation without treating web research as a live test.
-  - Completion notes: Pending.
+  - Completion notes: Implemented budgeted CFBD imports, canonical identity upserts, quarantine, rescheduling, stale-data protection, and result audits. Focused tests: 34 passed; 33 PostgreSQL tests skipped pending runner verification. Whitespace passed. Full local suite interrupted after stalling. Manual HTTP and credentialed checks remain pending. No protected files or Git operations changed. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend automated tests including disposable PostgreSQL databases passed. Files: backend/app/cfbd_import.py, backend/app/ingress.py, backend/tests/test_cfbd_import.py, progress/3_1_game_info_ingress/backend/plan.md, ralph/ingress-backend.progress.json. Logs: .git/ralph/ba4de0cad3499cfc/BE-08-006.*. Automated implementation checks only. The manual missing-key HTTP smoke test and credentialed provider verification remain pending until CHIP runs them separately.
 
 - [ ] BE-09 — Import paired current odds and observations
   - Status: not_started
@@ -202,4 +202,11 @@ All BE-05–BE-12 complete and validated; explicit free-provider refresh persist
 - Completed tasks: BE-07.
 - Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend automated tests including disposable PostgreSQL databases passed.
 - Completion notes: Implemented durable refresh admission, fencing, weekly/provider quotas, recovery, and regression tests. Focused tests: 21 passed; 18 PostgreSQL tests await runner verification because Docker access is denied. Syntax and whitespace checks passed. Full local suite was interrupted without results. Manual missing-key and credentialed checks remain pending. No protected files or Git operations changed.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
+
+### 2026-11-14 20:25 UTC — BE-08 Ralph execution
+
+- Completed tasks: BE-08.
+- Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend automated tests including disposable PostgreSQL databases passed.
+- Completion notes: Implemented budgeted CFBD imports, canonical identity upserts, quarantine, rescheduling, stale-data protection, and result audits. Focused tests: 34 passed; 33 PostgreSQL tests skipped pending runner verification. Whitespace passed. Full local suite interrupted after stalling. Manual HTTP and credentialed checks remain pending. No protected files or Git operations changed.
 - Next: Continue the configured task sequence; live-provider verification remains separately reported.

@@ -127,6 +127,10 @@ class ProviderClients:
     async def __aexit__(self, *args):
         await self._client.aclose()
 
+    @property
+    def cfbd_configured(self):
+        return bool(self._settings.cfbd_api_key.get_secret_value().strip())
+
     async def _get(self, provider: str, path: str, params: dict):
         key = (self._settings.cfbd_api_key if provider == "cfbd"
                else self._settings.odds_api_key).get_secret_value()
