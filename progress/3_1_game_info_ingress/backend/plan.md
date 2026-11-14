@@ -1,6 +1,6 @@
 # Design 3, part 1 — Game info ingress backend
 
-Area status: `in_progress`
+Area status: `complete`
 
 ## Objective and governing design
 
@@ -148,13 +148,13 @@ Accepted: America/Los_Angeles calendar weeks; both teams FBS; free keys only; 20
   - Validation: PostgreSQL API tests for 200/429/409/503/422, body fields, date filter, partial reload flag, order, server-clock kickoff cutoff, endpoint routing, health/readiness regressions and CORS; imported provenance reaches immutable run snapshots and later refreshes do not rewrite existing bets.
   - Completion notes: Fixed imported selection provenance resolution and updated read-only query assertions; added regression coverage. Syntax and whitespace checks passed. Automated execution awaits runner verification because local dependencies and Docker access are unavailable. Manual missing-key and credentialed checks remain pending. No Git mutations or protected-file edits performed. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend automated tests including disposable PostgreSQL databases passed. Files: backend/app/main.py, backend/app/routes.py, backend/app/runs.py, backend/app/schemas.py, backend/app/strategies.py, backend/tests/test_cors.py, backend/tests/test_games_api.py, backend/tests/test_ingress_api.py, backend/tests/test_strategies.py, progress/3_1_game_info_ingress/backend/plan.md, ralph/ingress-backend.progress.json. Logs: .git/ralph/ba4de0cad3499cfc/BE-11-011.*. Automated implementation checks only. The manual missing-key HTTP smoke test and credentialed provider verification remain pending until CHIP runs them separately.
 
-- [ ] BE-12 — Verify and document real ingress handoff
-  - Status: not_started
+- [x] BE-12 — Verify and document real ingress handoff
+  - Status: complete
   - Scope: Setup docs, key configuration, free-only usage/limit semantics, complete backend checks and frontend handoff; document integration evidence accurately.
   - Dependencies: BE-05 through BE-11.
   - Acceptance criteria: Isolated PostgreSQL tests pass; docs reproduce explicit refresh behavior and simple popup contract; live verification reported only if keys configured and calls made; missing free access is recorded without upgrading. All backend criteria met before area marked complete.
   - Validation: Backend suite plus bounded free-provider smoke test if available, migration drift, no-secret review, and documented sample full/partial/limit envelopes. No user DB deletion or external paid subscriptions.
-  - Completion notes: Pending.
+  - Completion notes: Added README handoff instructions, sample envelopes, exact missing-key expectations, and automated HTTP regression tests. Syntax and whitespace checks passed. PostgreSQL tests await runner verification: local Docker access is denied and pytest is unavailable. CHIP’s manual HTTP and credentialed provider checks remain pending. No Git mutations or protected-file edits performed. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend automated tests including disposable PostgreSQL databases passed. Files: README.md, backend/tests/test_ingress_api.py, progress/3_1_game_info_ingress/backend/plan.md, ralph/ingress-backend.progress.json. Logs: .git/ralph/ba4de0cad3499cfc/BE-12-012.*. Automated implementation checks only. The manual missing-key HTTP smoke test and credentialed provider verification remain pending until CHIP runs them separately.
 
 ## Backend completion criteria
 
@@ -230,4 +230,11 @@ All BE-05–BE-12 complete and validated; explicit free-provider refresh persist
 - Completed tasks: BE-11.
 - Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend automated tests including disposable PostgreSQL databases passed.
 - Completion notes: Fixed imported selection provenance resolution and updated read-only query assertions; added regression coverage. Syntax and whitespace checks passed. Automated execution awaits runner verification because local dependencies and Docker access are unavailable. Manual missing-key and credentialed checks remain pending. No Git mutations or protected-file edits performed.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
+
+### 2026-11-14 20:45 UTC — BE-12 Ralph execution
+
+- Completed tasks: BE-12.
+- Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend automated tests including disposable PostgreSQL databases passed.
+- Completion notes: Added README handoff instructions, sample envelopes, exact missing-key expectations, and automated HTTP regression tests. Syntax and whitespace checks passed. PostgreSQL tests await runner verification: local Docker access is denied and pytest is unavailable. CHIP’s manual HTTP and credentialed provider checks remain pending. No Git mutations or protected-file edits performed.
 - Next: Continue the configured task sequence; live-provider verification remains separately reported.

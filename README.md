@@ -29,3 +29,80 @@ To use a private settings file outside the project, run `export ENV_FILE="$HOME/
 
 - [Frontend home page](http://127.0.0.1:5173/)
 - [Swagger API docs](http://127.0.0.1:8000/docs)
+
+## Game ingress handoff
+
+After setup, use `make migrate` for existing databases. Configure server-side
+`CFBD_API_KEY` and `ODDS_API_KEY` in your settings file and recreate the backend
+after changes (`docker compose up -d --force-recreate backend`, with `ENV_FILE`
+exported if used). Leave both blank for the missing-key check below. Use free
+accounts only; unavailable free access is a recorded integration gap, never an
+upgrade or a reason to fabricate data.
+
+`GET /api/games?window=current` reads saved data only. Explicitly send
+`POST /api/games/refresh` with no body or query to import the current Pacific
+Monday–Sunday window, requiring both teams FBS. There is no background refresh,
+automatic retry, or prior-week catch-up. The 45-second bounded operation allows
+one writer across tabs. Of 20 shared attempts/week, 2 are reserved until Sunday;
+accepted provider work consumes an attempt even on failure, with a 60-second
+cooldown. Preflight rejection consumes none. Monthly provider accounting is
+separate: a 10% reserve targets at most 900 CFBD calls / 450 Odds API credits.
+External key use can exhaust these earlier; unknown provider reset times remain
+unknown, and Monday does not reset provider allowance. No eligible upcoming games
+means no odds request.
+
+Frontend handoff: disable Refresh while pending, show one popup using `message`,
+and reload the stored current-week GET whenever `data_changed` is true, including
+partial failure. Use a generic failure popup for transport errors without an
+envelope. No status polling is needed. HTTP 200 includes finished failures;
+429 means preflight weekly/cooldown/provider rejection, 409 an active refresh,
+503 unavailable database, and 422 invalid input. Inspect `success` and `reason`.
+Representative envelopes (UUIDs/times/counts vary; examples assume Saturday):
+
+```json
+{"success":true,"reason":"refreshed","message":"Refresh successful. 19 refreshes remaining this week. 2 are reserved until Sunday.","remaining_refreshes":19,"reserved_for_sunday":2,"retry_at":null,"data_changed":true,"run_id":"00000000-0000-0000-0000-000000000001"}
+{"success":false,"reason":"partial_failure","message":"Refresh failed to update all data. Successful updates were saved; failed stages kept saved data. 19 refreshes remaining this week. 2 are reserved until Sunday. Games/results updated. Spreads: Refresh failed: provider request failed or timed out. Saved data remains available.","remaining_refreshes":19,"reserved_for_sunday":2,"retry_at":null,"data_changed":true,"run_id":"00000000-0000-0000-0000-000000000002"}
+{"success":false,"reason":"sunday_reserve","message":"Refresh failed: the remaining 2 refreshes are reserved until Sunday. 2 refreshes remaining this week. 2 are reserved until Sunday.","remaining_refreshes":2,"reserved_for_sunday":2,"retry_at":"2026-11-15T08:00:00Z","data_changed":false,"run_id":null}
+```
+
+CFBD owns status: explicit final/completed plus both valid scores is required for
+completion; elapsed kickoff never implies completion. Unknown/postponed states
+are quarantined. Saved scheduled status can remain after kickoff, when new
+selections become unavailable. Quotes use one bookmaker's paired opposite lines
+(including zero), Decimal `ROUND_HALF_UP` to 2 line / 4 price places, and finite
+prices greater than one. Keep the prior valid book or choose the smallest stable
+book key. Failed calls preserve quotes; successful scope responses without usable
+quotes remove availability. Observations/provenance and existing bets are retained;
+settlement is separate.
+
+### Verification and pending manual checks
+
+Automated tests use fake keys/mock transports and disposable PostgreSQL databases,
+including concurrent admission/fencing, migration drift, and full/partial/error
+responses. Run the runner's configured PostgreSQL-enabled backend suite for
+verification; operational results belong in its plan evidence. These tests do
+not establish real HTTP deployment or free-account access.
+
+**Pending — CHIP's manual missing-key HTTP smoke test:** with both keys blank,
+recreate the backend, confirm `curl -i http://127.0.0.1:8000/api/ready` returns 200,
+then run `curl -i -X POST http://127.0.0.1:8000/api/games/refresh` without a body.
+With no active refresh or weekly restriction, expect HTTP 200 and exactly:
+`success=false`, `reason="configuration_error"`, `retry_at=null`,
+`data_changed=false`, a non-null UUID `run_id`, and unchanged
+`remaining_refreshes=N` (20 for an unused week). `reserved_for_sunday=R` is
+`min(2,N)` before Sunday, otherwise 0. The exact message is
+`Refresh failed: provider credentials are missing or were rejected. N refreshes remaining this week.`
+plus ` R are reserved until Sunday.` when R is nonzero. No provider calls or
+reservations should occur. Repeat the POST: the count stays unchanged, with no
+new cooldown. Compare stored GET results before/after; they must be unchanged.
+Existing active/weekly restrictions take precedence; do not delete ledgers to
+force this check.
+
+**Pending — later credentialed verification:** CHIP configures free keys and
+performs one deliberate refresh after restrictions permit. Record actual status,
+safe envelope, stored FBS games/results/paired quotes and quota headers/account
+metadata; an empty week legitimately skips odds and does not verify odds access.
+Record denied features, unmatched items, partial updates or unknown reset timing
+accurately, retaining saved data without buying access. Neither manual check has
+been performed by this implementation loop; never record keys or raw credentials
+in evidence.

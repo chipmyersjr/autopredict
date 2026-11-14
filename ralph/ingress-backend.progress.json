@@ -1,7 +1,7 @@
 {
   "version": 1,
   "plan": "progress/3_1_game_info_ingress/backend/plan.md",
-  "area_status": "in_progress",
+  "area_status": "complete",
   "tasks": {
     "BE-01": {
       "title": "Research and draft ingress proposal",
@@ -127,7 +127,20 @@
     },
     "BE-12": {
       "title": "Verify and document real ingress handoff",
-      "status": "not_started"
+      "status": "complete",
+      "summary": "Added README handoff instructions, sample envelopes, exact missing-key expectations, and automated HTTP regression tests. Syntax and whitespace checks passed. PostgreSQL tests await runner verification: local Docker access is denied and pytest is unavailable. CHIP\u2019s manual HTTP and credentialed provider checks remain pending. No Git mutations or protected-file edits performed.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build backend dependencies passed",
+        "Backend automated tests including disposable PostgreSQL databases passed"
+      ],
+      "files": [
+        "README.md",
+        "backend/tests/test_ingress_api.py",
+        "progress/3_1_game_info_ingress/backend/plan.md",
+        "ralph/ingress-backend.progress.json"
+      ]
     }
   }
 }

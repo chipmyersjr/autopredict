@@ -71,6 +71,46 @@ def test_refresh_input_and_openapi(api):
         assert contract[code]["content"]["application/json"]["schema"]["$ref"].endswith("/RefreshResponse")
 
 
+@pytest.mark.parametrize("sunday", [False, True])
+def test_missing_keys_http_handoff_spends_nothing(api, monkeypatch, sunday):
+    """Automated HTTP contract only; CHIP's deployed HTTP smoke stays pending."""
+    from uuid import UUID
+    from sqlalchemy import func
+    from app.models import ProviderCallReservation, RefreshRun, WeeklyRefreshBucket
+
+    client, engine, clock, requests, _ = api
+    if sunday:
+        clock[0] += timedelta(days=1)
+    monkeypatch.setattr("app.routes.RefreshService", lambda engine, settings: RefreshService(
+        engine, Settings(_env_file=None, cfbd_api_key="", odds_api_key=""),
+        clock=lambda: clock[0], transport=httpx.MockTransport(
+            lambda request: pytest.fail("missing keys must never dispatch provider HTTP"))))
+    before = client.get("/api/games?window=current").json()
+    run_ids = []
+    for _ in range(2):
+        response = client.post("/api/games/refresh")
+        assert response.status_code == 200
+        body = response.json()
+        run_ids.append(UUID(body["run_id"]))
+        assert body == {
+            "success": False, "reason": "configuration_error",
+            "message": "Refresh failed: provider credentials are missing or were rejected. "
+                       "20 refreshes remaining this week."
+                       + ("" if sunday else " 2 are reserved until Sunday."),
+            "remaining_refreshes": 20, "reserved_for_sunday": 0 if sunday else 2,
+            "retry_at": None, "data_changed": False, "run_id": str(run_ids[-1]),
+        }
+    assert run_ids[0] != run_ids[1]
+    assert client.get("/api/games?window=current").json() == before
+    assert not requests
+    with Session(engine) as session:
+        assert session.scalar(select(WeeklyRefreshBucket.accepted_attempts)) == 0
+        assert session.scalar(select(WeeklyRefreshBucket.last_attempt_at)) is None
+        assert session.scalar(select(func.count()).select_from(ProviderCallReservation)) == 0
+        assert all(run.status == "rejected" and run.provider_started_at is None
+                   for run in session.scalars(select(RefreshRun)))
+
+
 def test_current_week_sunday_results_boundaries_and_cutoff(api):
     from app.ingress import current_week
     client, engine, clock, requests, _ = api
