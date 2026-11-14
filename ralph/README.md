@@ -16,6 +16,7 @@ Use the SSH-connected Docker Sandbox terminal with Python 3.9+, Git, authenticat
 
 ```sh
 make ralph-preview                       # Show tasks and checks; no edits/model calls
+make ralph-preview RALPH_ARGS="--verbose" # Include exact commands when needed
 make ralph                               # Run BE-07–BE-12
 make ralph RALPH_ARGS="--through BE-07"    # Start with just one task
 make ralph RALPH_ARGS="--resume"          # Continue after inspecting a stopped run

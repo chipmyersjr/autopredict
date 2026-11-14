@@ -17,6 +17,7 @@ import os
 from pathlib import Path
 import re
 import selectors
+import shlex
 import signal
 import subprocess
 import sys
@@ -439,6 +440,45 @@ def run(root, config, config_path, chosen, args, storage):
     print("\nSelected tasks complete. No changes were pushed.")
 
 
+def show_preview(root, config, selected, verbose=False):
+    progress = read_progress(root, config)["tasks"]
+    complete = sum(progress[t["id"]]["status"] == "complete" for t in selected)
+    print("Ralph preview — nothing has been run")
+    print("Plan: " + config["plan"])
+    print(f"\nTask queue: {len(selected) - complete} unfinished, {complete} already complete")
+    labels = {"not_started": "pending", "in_progress": "in progress", "blocked": "blocked", "complete": "complete (skip)"}
+    for item in selected:
+        task = progress[item["id"]]
+        print(f"  {item['id']}  {labels[task['status']]:<16} {task['title']}")
+        for check in item.get("checks", []):
+            print("    Additional check: " + check["name"])
+            if verbose:
+                print("      " + shlex.join(arg.replace("{repo}", str(root)) for arg in check["argv"]))
+    shared = config.get("checks", [])
+    if shared:
+        print("\nChecks before EVERY task commit:")
+        for check in shared:
+            print("  - " + check["name"])
+            if verbose:
+                print("    " + shlex.join(arg.replace("{repo}", str(root)) for arg in check["argv"]))
+    minutes = config["task_timeout"] / 60
+    print("\nPer task: implement → check → update progress/plan → commit locally")
+    print(f"Limits: up to {config['max_attempts']} attempts and {minutes:g} minutes per task, per launch.")
+    print("No automatic push. Only the configured checks run.")
+    if config.get("completion_note"):
+        print("Follow-up: " + config["completion_note"])
+    if changed(root):
+        print("\nWorking tree has changes. Fresh runs require a clean tree; --resume is for an interrupted run.")
+    config_arg = (" RALPH_CONFIG=" + shlex.quote(str(config["config_name"]))
+                  if config["config_name"] != "ralph/ingress-backend.json" else "")
+    range_arg = ""
+    if selected != config["tasks"]:
+        range_arg = " RALPH_ARGS=" + shlex.quote("--from " + selected[0]["id"] + " --through " + selected[-1]["id"])
+    print("\nTo start: make ralph" + config_arg + range_arg)
+    if not verbose:
+        print('Exact commands: make ralph-preview' + config_arg + ' RALPH_ARGS="--verbose"')
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=["preview", "run"])
@@ -446,6 +486,7 @@ def main(argv=None):
     parser.add_argument("--from", dest="first")
     parser.add_argument("--through", dest="last")
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--verbose", action="store_true", help="Include exact check commands in preview")
     parser.add_argument("--allow-plan-updates", action="store_true", help="Authorize generated status/evidence updates for this run")
     parser.add_argument("--codex", default="codex")
     parser.add_argument("--permissions", choices=["workspace-write", "danger-full-access"], default="workspace-write")
@@ -454,6 +495,7 @@ def main(argv=None):
         root = Path(git(Path.cwd(), "rev-parse", "--show-toplevel")).resolve()
         config_path = within(root, args.config)
         config = read_config(root, config_path)
+        config["config_name"] = args.config
         selected = config["tasks"]
         ids = [t["id"] for t in selected]
         first = ids.index(args.first) if args.first else 0
@@ -462,12 +504,7 @@ def main(argv=None):
             raise LoopError("Invalid task range")
         selected = selected[first:last + 1]
         if args.mode == "preview":
-            parsed = read_progress(root, config)["tasks"]
-            print("Plan: " + config["plan"])
-            for item in selected:
-                print(item["id"] + " | " + parsed[item["id"]]["status"] + " | " + parsed[item["id"]]["title"])
-                for check in config.get("checks", []) + item.get("checks", []):
-                    print("  check: " + check["name"] + " " + json.dumps(check["argv"]))
+            show_preview(root, config, selected, args.verbose)
             return 0
         if not args.allow_plan_updates:
             raise LoopError("Pass --allow-plan-updates to authorize status/evidence updates")

@@ -59,7 +59,7 @@ status:
 	$(COMPOSE) ps
 
 ralph-preview:
-	python3 scripts/ralph.py preview --config "$(RALPH_CONFIG)" $(RALPH_ARGS)
+	@python3 scripts/ralph.py preview --config "$(RALPH_CONFIG)" $(RALPH_ARGS)
 
 ralph:
 	python3 scripts/ralph.py run --config "$(RALPH_CONFIG)" --allow-plan-updates $(RALPH_ARGS)

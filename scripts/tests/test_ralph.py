@@ -132,9 +132,25 @@ class RunnerTests(unittest.TestCase):
         result = self.call(command="preview", mode="protected")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("BE-02", result.stdout)
+        self.assertIn("nothing has been run", result.stdout)
+        self.assertIn("2 unfinished, 0 already complete", result.stdout)
+        self.assertEqual(result.stdout.count("Source verification"), 1)
+        self.assertNotIn("files=list", result.stdout)
         self.assertEqual(self.plan.read_text(), PLAN)
         self.assertEqual(self.git("status", "--short"), "")
         self.assertFalse((self.root / ".git/ralph").exists())
+
+    def test_verbose_preview_includes_commands_once(self):
+        result = self.call("--verbose", command="preview")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.count("files=list"), 1)
+
+    def test_preview_start_command_preserves_selected_range(self):
+        result = self.call("--through", "BE-01", command="preview")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("1 unfinished, 0 already complete", result.stdout)
+        self.assertIn("RALPH_CONFIG=ralph/config.json", result.stdout)
+        self.assertIn("--from BE-01 --through BE-01", result.stdout)
 
     def test_one_commit_per_task_and_idempotent_rerun(self):
         result = self.call()
@@ -195,8 +211,10 @@ class RunnerTests(unittest.TestCase):
         self.plan.write_text(PLAN.replace("  - Dependencies: BE-01.", "  - Dependencies: Refer to governing design."))
         result = self.call(command="preview")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("BE-01 | not_started | First task", result.stdout)
-        self.assertIn("BE-02 | not_started | Second task", result.stdout)
+        self.assertIn("BE-01  pending", result.stdout)
+        self.assertIn("BE-02  pending", result.stdout)
+        self.assertIn("First task", result.stdout)
+        self.assertIn("Second task", result.stdout)
 
     def test_malformed_mirror_stops_before_status_updates(self):
         self.plan.write_text(PLAN.replace("  - Completion notes: Pending.", "", 1))
