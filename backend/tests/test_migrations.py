@@ -12,6 +12,13 @@ from sqlalchemy.orm import Session
 
 from app.models import Game, Market, Selection
 
+CORE_TABLES = {"games", "markets", "selections", "strategies", "users", "runs", "run_games", "bets"}
+INGRESS_TABLES = {
+    "weekly_refresh_buckets", "refresh_runs", "provider_quota_periods",
+    "provider_call_reservations", "provider_calendars", "team_aliases",
+    "provider_game_links", "quote_observations", "game_result_changes",
+}
+
 pytestmark = pytest.mark.skipif(
     os.environ.get("RUN_POSTGRES_TESTS") != "1",
     reason="Set RUN_POSTGRES_TESTS=1 to create and test a disposable PostgreSQL database",
@@ -21,8 +28,8 @@ pytestmark = pytest.mark.skipif(
 def test_schema_and_migration_cycle(migrated_database):
     engine, config = migrated_database
     inspector = inspect(engine)
-    assert set(inspector.get_table_names()) == {"alembic_version", "games", "markets", "selections", "strategies"}
-    for table in ("games", "markets", "selections", "strategies"):
+    assert set(inspector.get_table_names()) == {"alembic_version"} | CORE_TABLES | INGRESS_TABLES
+    for table in CORE_TABLES | INGRESS_TABLES:
         columns = {c["name"]: c for c in inspector.get_columns(table)}
         assert str(columns["id"]["type"]) == "UUID"
         assert inspector.get_pk_constraint(table)["constrained_columns"] == ["id"]
@@ -45,7 +52,7 @@ def test_schema_and_migration_cycle(migrated_database):
     assert inspect(engine).get_table_names() == ["alembic_version"]
     command.upgrade(config, "head")
     command.check(config)
-    assert set(inspect(engine).get_table_names()) == {"alembic_version", "games", "markets", "selections", "strategies"}
+    assert set(inspect(engine).get_table_names()) == {"alembic_version"} | CORE_TABLES | INGRESS_TABLES
 
 
 def test_relationships_values_and_constraints(migrated_database):

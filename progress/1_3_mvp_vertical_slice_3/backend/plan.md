@@ -1,8 +1,8 @@
 # Design 1, part 3 — Dry Run Bets backend
 
-Area status: `not_started`
+Area status: `complete`
 
-Planning status: final implementation plan; implementation is not requested in this loop.
+Planning status: settled contract; backend implementation authorized October 2, 2026.
 
 ## Objective and governing design
 
@@ -46,37 +46,37 @@ Add persistence, execution, and inspection only. Settlement, results/P&L calcula
 
 ## Tasks
 
-- [ ] BE-01 — Persist local User, Runs, associations and snapshot Bets
-  - Status: not_started
+- [x] BE-01 — Persist local User, Runs, associations and snapshot Bets
+  - Status: complete
   - Scope: Add canonical models, additive migration, constraints/indexes, request identity storage, and explicit local User bootstrap described above.
   - Dependencies: Completed slice 2 models/migrations.
   - Acceptance criteria: ERD ownership and decimal precision preserved; Strategies remain shared; snapshots and skip associations survive reload; repeat bootstrap preserves edits; no startup writes; deletion cannot orphan history.
   - Validation: Disposable PostgreSQL migration upgrade/downgrade/re-upgrade and drift tests; constraints, FK retention, unique associations/idempotency key, nullable settlement fields, and repeated bootstrap.
-  - Completion notes: Pending implementation and validation.
+  - Completion notes: Implemented `backend/app/models.py`, additive `migrations/versions/0003_create_runs_bets.py`, and explicit `backend/app/seed_user.py`. PostgreSQL upgrade/downgrade/re-upgrade and Alembic drift pass. Ownership FKs, unique request/association constraints, deletion retention, precision/null fields, timestamp metadata and bootstrap edit preservation verified in `test_migrations.py` and `test_runs.py`.
 
-- [ ] BE-02 — Implement transactional Dry Run execution
-  - Status: not_started
+- [x] BE-02 — Implement transactional Dry Run execution
+  - Status: complete
   - Scope: Add Run service and DryRunAdapter, reuse eligibility/random engine, apply fixed-stake budget checks, lock/revalidate stored quotes, and persist atomic snapshot execution.
   - Dependencies: BE-01.
   - Acceptance criteria: Exactly one open Bet per eligible game; mixed skips recorded; all-skipped/insufficient-budget requests write nothing; fresh server decisions only; no external calls; quote updates cannot mutate saved Bets; kickoff/inactive/invalidation checks apply at placement.
   - Validation: Deterministic strategy/adapter tests plus PostgreSQL rollback, exact budget boundary, frozen-clock cutoff, zero spread, mixed/all-skipped, invalid prices/pairs, and concurrent quote updates. Change Selection line/price after execution and assert historical Bet parity.
-  - Completion notes: Pending implementation and validation; provider integration remains conditional on ingress availability.
+  - Completion notes: Implemented `backend/app/runs.py` with typed DryRunAdapter, fixed-stake checks, stable-order row locks, locked quote graph, post-sampling clock recheck and atomic persistence. PostgreSQL tests verify exact budget/mixed skips/all-skipped rollback, adapter failure rollback, zero spreads, kickoff crossing, snapshot preservation and concurrent quote-writer blocking. Existing strategy tests cover invalid prices and pairs. Ingress runtime is absent; demo provenance remains null and provider integration is unperformed.
 
-- [ ] BE-03 — Expose idempotent Run creation and history APIs
-  - Status: not_started
+- [x] BE-03 — Expose idempotent Run creation and history APIs
+  - Status: complete
   - Scope: Add typed request/response schemas and five Run/Bet endpoints, local ownership resolution, durable replay handling, and documented error semantics.
   - Dependencies: BE-01–BE-02.
   - Acceptance criteria: Contract above is represented in OpenAPI; same-key retry returns one original Run even after kickoff/restart; changed-body reuse conflicts; exact decimals/null metrics/order survive reads; unrelated User history is unavailable; preview remains side-effect-free.
   - Validation: PostgreSQL API tests for 201/200, concurrent retries, retry after commit with lost response, replay after server restart and eligibility change, 404/409/422/503, ownership, query loading, CORS Idempotency-Key preflight, and existing API regressions.
-  - Completion notes: Pending implementation and validation.
+  - Completion notes: Implemented typed schemas in `backend/app/schemas.py`, five routes in `backend/app/routes.py`, and Idempotency-Key CORS in `backend/app/main.py`. `test_runs.py` verifies creation/replay, reload/restart plus changed eligibility, same-key concurrent retries, cross-strategy unique-key conflicts, new-key simulations, normalized money, 404/409/422/503, ownership, ordering, constant history query count and OpenAPI. Reads serialize stored snapshots without generating decisions.
 
-- [ ] BE-04 — Verify and document the persistence handoff
-  - Status: not_started
+- [x] BE-04 — Verify and document the persistence handoff
+  - Status: complete
   - Scope: Document migration/bootstrap, request key semantics, payloads and theoretical accounting labels; verify demo create/read/reload flow against PostgreSQL and hand off to frontend.
   - Dependencies: BE-01–BE-03; full epic acceptance also needs frontend FE-04.
   - Acceptance criteria: Documented local setup creates inspectable theoretical Bets; database history matches decisions and stake; replay creates no duplicates; snapshots survive quote changes; no settlement/P&L claimed.
   - Validation: Required backend regression suite with isolated PostgreSQL, migration drift, live HTTP create/replay/list/detail/bet smoke check using dedicated demo data, and frontend FE-04 browser evidence. Record unavailable provider integration explicitly.
-  - Completion notes: Pending implementation and validation.
+  - Completion notes: Backend documentation and actual HTTP validation are implemented in `README.md` and `backend/tests/test_runs.py`. Required frontend FE-04 acceptance now passes: isolated PostgreSQL desktop/mobile create, intentionally lost committed response, same-key recovery, Run history/reload and immutable snapshots after dedicated quote/game changes. `frontend/tests/runs-live.spec.ts` and its disposable server helper provide repeatable evidence. Backend regression (88 tests) and migration drift pass. Generated test database/server cleanup verified; development fixtures untouched. Provider integration is unperformed because ingress is absent.
 
 ## Epic acceptance and execution order
 
@@ -90,3 +90,19 @@ BE-01 → BE-02 → BE-03 → BE-04; frontend client work may start against the 
 - Validation: Read governing designs including the ERD image, repository instructions, completed slice 2 plans, ingress plan, and current models/decision engine/schemas/frontend API client. Checked sibling contract and task dependencies. Runtime tests are not applicable to this planning-only change.
 - Blockers: None for planning or the demo implementation path. Provider provenance integration awaits the separate ingress epic.
 - Next steps: BE-01 when implementation is requested; frontend FE-01 may proceed against this contract.
+
+### 2026-10-02 — Backend implementation and persistence handoff
+
+- Completed task IDs: BE-01, BE-02, BE-03; BE-04 backend documentation and HTTP validation complete, frontend acceptance dependency outstanding.
+- Validation: `RUN_POSTGRES_TESTS=1 .venv/bin/pytest -q --tb=short` from backend passed all 88 tests against generated disposable PostgreSQL databases; migration cycle/drift, rollback, concurrent retries/quote writer, reload snapshots, OpenAPI/CORS and actual HTTP smoke included. Existing upstream Starlette/httpx deprecation warning remains. `git diff --check` passed. No development database migration or fixture mutation was performed.
+- Settled implementation detail: lock selected Strategy before Games/Markets/Selections; claim durable request identity before sampling and catch only the named request uniqueness conflict, rolling back before a fresh replay read. Assemble graphs from locked rows; history uses select-in loading with constant query count.
+- Blockers: BE-04 requires frontend FE-04 browser evidence. Frontend tasks remain not_started under the current backend-only scope. Provider provenance integration remains conditional on the separate ingress epic.
+- Next steps: Implement sibling frontend FE-01–FE-03, run FE-04, then close BE-04 and the combined epic. Local users can apply the new migration and bootstrap command in README to use the backend now.
+
+### 2026-10-02 — Complete frontend persistence acceptance
+
+- Completed task IDs: BE-04; all backend and sibling frontend tasks are complete.
+- Validation: Backend PostgreSQL suite rerun: 88 passed. Frontend TypeScript/production build passes; controlled browser suite 41 passed, five optional live tests skipped; isolated earlier Games/preview browser regression 12 passed; saved-run desktop/mobile browser acceptance two passed. See sibling frontend loop log and README for exact commands and screenshot evidence.
+- Evidence: Actual committed creation response intentionally lost, original request recovered after tab reload with 200 and one Run. Bet values match server snapshots. Mutated dedicated current Game/Selection fixtures did not change history or reloaded Bets. Test database cleanup verified; no development fixture mutations or provider calls.
+- Blockers: None for slice 3. Ingress integration remains conditional on its independent implementation.
+- Next steps: Slice 3 complete; settlement/P&L remains later work.

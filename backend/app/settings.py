@@ -22,6 +22,9 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = ["http://127.0.0.1:5173", "http://localhost:5173"]
 
+    cfbd_api_key: SecretStr = SecretStr("")
+    odds_api_key: SecretStr = SecretStr("")
+
     @field_validator("cors_origins")
     @classmethod
     def validate_cors_origins(cls, origins: list[str]) -> list[str]:

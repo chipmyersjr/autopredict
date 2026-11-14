@@ -17,7 +17,7 @@ for (const width of [375, 1280]) test(`live decision preview at ${width}px`, asy
   for (let i = 0; i < games.length; i++) if (await boxes.nth(i).isEnabled()) { await boxes.nth(i).check(); count++ }
   expect(count).toBeGreaterThan(0)
   const response = page.waitForResponse(r => r.url().endsWith('/decisions') && r.request().method() === 'POST')
-  await page.getByRole('button', { name: 'Execute Random Strategy' }).click()
+  await page.getByRole('button', { name: 'Preview decisions' }).click()
   const result: Preview = await (await response).json()
   expect(result.decisions.length).toBe(count)
   const region = page.getByRole('region', { name: 'Decision preview', exact: true })

@@ -89,6 +89,28 @@ def test_multiple_markets_and_just_before_kickoff():
     assert len(random_decisions([candidates, candidates], Pick(-1))) == 2
 
 
+@pytest.mark.parametrize("positional", [False, True])
+def test_persisted_quote_matches_both_selection_side_representations(positional):
+    game = game_fixture()
+    pair = game.markets[0].selections
+    if positional:
+        pair[0].side, pair[1].side = "home", "away"
+    quote = MagicMock(
+        id=uuid4(), bookmaker="alpha", source_timestamp=NOW, fetched_at=NOW,
+        home_line=pair[0].line, home_price=pair[0].price,
+        away_line=pair[1].line, away_price=pair[1].price,
+    )
+    session = MagicMock()
+    session.scalar.return_value = quote
+    candidates, skip = resolve_candidates(game, NOW, session)
+    assert skip is None and len(candidates) == 2
+    assert all(c.quote_provenance.observation_id == quote.id for c in candidates)
+    assert {c.side for c in candidates} == {s.side for s in pair}
+    quote.home_line += Decimal("1")
+    candidates, skip = resolve_candidates(game, NOW, session)
+    assert candidates == [] and skip.reason == "spread_unavailable"
+
+
 @pytest.mark.parametrize("body", [{"game_ids": []}, {"game_ids": [str(RANDOM_STRATEGY_ID)] * 2}, {"game_ids": ["bad"]}, {"game_ids": [str(RANDOM_STRATEGY_ID)], "stake": 10}])
 def test_invalid_decision_input(body):
     with pytest.raises(ValidationError):
@@ -165,7 +187,9 @@ def test_preview_order_precision_skips_and_no_writes(api, monkeypatch):
         assert [d["game_id"] for d in body["decisions"]] == ids[1:]
         assert body["skipped_games"] == [{"game_id": ids[0], "reason": "spread_unavailable"}]
         assert body["generated_at"].endswith("Z")
-        assert statements == ["SELECT"] * 4
+        # Four graph/strategy reads plus observation and provider-link lookups
+        # for each of the four eligible demo markets; preview remains read-only.
+        assert statements == ["SELECT"] * 12
         for decision in body["decisions"]:
             assert decision["price"] == "1.9091" and decision["quote_provenance"] is None
             source = next(s for g in fixtures for m in g.markets for s in m.selections if str(s.id) == decision["selection_id"])

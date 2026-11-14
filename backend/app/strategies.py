@@ -3,8 +3,9 @@ from datetime import datetime, timezone
 from random import SystemRandom
 from typing import Protocol, Sequence
 
-from app.models import Game
-from app.schemas import BetDecision, SkippedGame
+from sqlalchemy import select
+from app.models import Game, QuoteObservation, ProviderGameLink
+from app.schemas import BetDecision, SkippedGame, QuoteProvenance
 
 
 class ChoiceGenerator(Protocol):
@@ -15,11 +16,11 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def resolve_candidates(game: Game, now: datetime) -> tuple[list[BetDecision], SkippedGame | None]:
+def resolve_candidates(game: Game, now: datetime, session=None) -> tuple[list[BetDecision], SkippedGame | None]:
     """Use the server clock even when a source still labels a game scheduled.
 
-    Ingress is not implemented yet: canonical active paired selections are the
-    available stored snapshots. No provider provenance is invented here.
+    Imported projections must match a current persisted paired observation.
+    Demo projections retain null provenance.
     """
     reason = None
     if game.status != "scheduled":
@@ -37,15 +38,31 @@ def resolve_candidates(game: Game, now: datetime) -> tuple[list[BetDecision], Sk
         pair = [s for s in market.selections if s.is_active]
         if len(pair) != 2 or game.home_team == game.away_team:
             continue
-        if {s.side for s in pair} != {game.home_team, game.away_team}:
+        sides = {s.side for s in pair}
+        if sides not in ({game.home_team, game.away_team}, {"home", "away"}):
             continue
         if any(s.line is None or not s.line.is_finite() or not s.price.is_finite() or s.price <= 1 for s in pair):
             continue
         if pair[0].line != -pair[1].line:
             continue
+        provenance = None
+        if session is not None:
+            quote = session.scalar(select(QuoteObservation).where(
+                QuoteObservation.game_id == game.id, QuoteObservation.market_id == market.id,
+                QuoteObservation.is_current))
+            if quote is not None:
+                if any((s.line, s.price) != (
+                    (quote.home_line, quote.home_price) if s.side == (
+                        "home" if sides == {"home", "away"} else game.home_team)
+                    else (quote.away_line, quote.away_price)) for s in pair):
+                    continue
+                provenance = QuoteProvenance(observation_id=quote.id, bookmaker=quote.bookmaker,
+                    source_timestamp=quote.source_timestamp, fetched_at=quote.fetched_at)
+            elif session.scalar(select(ProviderGameLink.id).where(ProviderGameLink.game_id == game.id).limit(1)):
+                continue
         candidates.extend(BetDecision(
             game_id=game.id, market_id=market.id, selection_id=s.id,
-            side=s.side, line=s.line, price=s.price,
+            side=s.side, line=s.line, price=s.price, quote_provenance=provenance,
         ) for s in pair)
     candidates.sort(key=lambda c: (c.market_id, c.selection_id))
     if not candidates:

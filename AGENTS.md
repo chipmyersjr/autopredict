@@ -12,9 +12,20 @@ These instructions apply to the entire repository. Read them before planning or 
 - Read the relevant design documents before planning each epic or implementing its tasks. If document order or conflicting requirements are ambiguous, ask CHIP rather than inventing precedence.
 - If requested work conflicts with the design, identify the conflict and ask CHIP to resolve it through a subsequent design document before implementing the conflicting behavior. Continue independent work that remains consistent with the design.
 
+## Change visibility
+
+- Use the dedicated `apply_patch` tool for every manual text-file creation, edit, or deletion so changes appear in the interface's review/diff card. Do not make these edits through shell redirection, Python file writes, or other shell-based replacements. Apply edits directly as patches; do not delete and recreate unchanged files just to generate a review card.
+- When a change must be produced by a generator, formatter, dependency manager, or binary-asset tool, explain that exception and report the resulting files for review. If the patch tool is unavailable, tell CHIP before using a fallback editing method.
+- After each meaningful batch of file edits, promptly tell CHIP what changed and provide clickable links to the affected files.
+- Include a direct diff-review link when the environment provides one. Never invent a diff-checker URL. If no diff link is available, provide the exact `git diff` command for the affected tracked files and identify new files separately so CHIP can review them through their file links.
+- Keep change updates concise and send them during the work, not only in the final response.
+
 ## Agent planning area
 
 - `progress/` is the agent-maintained area for plans, execution notes, and completion tracking.
+- Create, edit, rename, or delete files in `progress/` only during a planning phase explicitly requested or authorized by CHIP. An implementation, fix, tooling, or validation request does not authorize progress edits, and agents must not declare a planning phase on their own to bypass this rule.
+- Outside an authorized planning phase, read existing plans as needed and report implementation status, validation evidence, and blockers in chat. Do not update task statuses, completion notes, loop logs, or previous epic folders. Do not create a plan as a prerequisite to carrying out an implementation request.
+- During an authorized planning phase, update only the epic folders within the requested scope. Preserve previous epic folders unless CHIP explicitly includes them. These phase and scope restrictions apply to all progress-maintenance instructions below.
 - Name epic directories `progress/<design-number>_<part-number>_<descriptive-name>/`. The first number identifies the primary governing design document; the second identifies a stable implementation part within that design. For example, `1_1_mvp_vertical_slice_1` is part 1 of `design/1_mvp.html`, later MVP parts use `1_2_...`, `1_3_...`, and the first ingress part is `3_1_game_info_ingress` under `design/3_game_info_ingress.html`. Start part numbers at 1, reuse existing parts, and do not renumber them when their status changes. Keep the existing `0_init_apps` bootstrap directory as a legacy exception. Plans may reference additional governing design documents.
 - Plans and execution notes must reference the governing documents in `design/` rather than copy them. They may record implementation details and validation evidence, but must not serve as alternate product design documents.
 - For each epic, maintain both of these plans:
@@ -30,12 +41,12 @@ These instructions apply to the entire repository. Read them before planning or 
 ## Planning and execution loop
 
 1. Read the relevant design documents and existing epic plans; inspect the current implementation.
-2. Create or update both plans before starting implementation. Reference the design documents that authorize the work.
+2. During an authorized planning phase, create or update both plans and reference the design documents that authorize the work. Outside that phase, proceed with authorized implementation without editing progress files.
 3. Split the epic into small, independently reviewable tasks with stable IDs, a concrete scope, dependencies where needed, acceptance criteria, and appropriate validation.
-4. Work through the tasks in dependency order. Mark the current task as in progress and keep the plans aligned when shared API or data contracts change.
-5. Validate each task against its acceptance criteria and the governing design. Record the result and any limitations.
-6. Mark a task complete only when its implementation and required validation are complete. Record the affected files and validation evidence so the work is reviewable.
-7. At the end of each loop, update task statuses, summarize completed work, and identify the next task or unresolved blockers. An epic is complete only when all applicable tasks in both plans are complete and the epic's acceptance criteria are satisfied.
+4. Work through the tasks in dependency order. Report current work and shared API/data contract changes in chat during implementation; update plans only during an authorized planning phase.
+5. Validate each task against its acceptance criteria and the governing design. Report results and limitations in chat; record them in progress files only during an authorized planning phase.
+6. During an authorized planning phase, mark a task complete only when its implementation and required validation are complete, recording affected files and validation evidence.
+7. At the end of each loop, summarize completed work, validation, next steps, and unresolved blockers in chat. Update task statuses and loop logs only during an authorized planning phase. An epic is complete only when all applicable tasks and acceptance criteria are satisfied; recorded statuses may await the next authorized planning update.
 
 ## Plan format and progress tracking
 

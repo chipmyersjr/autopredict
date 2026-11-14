@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from unittest.mock import MagicMock
 from uuid import uuid4
@@ -18,6 +18,7 @@ from app.seed import demo_games, seed_demo
 def api(migrated_database, monkeypatch):
     engine, _ = migrated_database
     monkeypatch.setattr("app.main.create_database_engine", lambda settings: engine)
+    monkeypatch.setattr("app.routes.utc_now", lambda: datetime(2026, 10, 1, tzinfo=UTC))
     with TestClient(app) as client:
         yield client, engine
 

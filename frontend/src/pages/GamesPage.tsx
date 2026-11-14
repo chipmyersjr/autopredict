@@ -1,26 +1,35 @@
 import { useEffect, useRef, useState } from 'react'
-import { getGames } from '../api/games'
+import { getGames, refreshGames } from '../api/games'
 import { getStrategies, previewDecisions } from '../api/strategies'
 import type { Strategy, Preview } from '../api/strategies'
 import type { Game } from '../api/games'
+import DryRunForm from '../components/DryRunForm'
 
-export function formatLine(line: string): string {
-  if (/^[+-]?0+(\.0+)?$/.test(line)) return 'Pick’em'
-  const trimmed = line.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '')
-  return trimmed.startsWith('-') || trimmed.startsWith('+') ? trimmed : `+${trimmed}`
-}
+import { formatLine } from '../format'
+export { formatLine } from '../format'
+
 const kickoffFormat = new Intl.DateTimeFormat(undefined, {
   weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
   hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
 })
+function teamLabel(game: Game | undefined, side: string): string {
+  if (side === 'home') return game?.home_team ?? side
+  if (side === 'away') return game?.away_team ?? side
+  return side
+}
 export function unavailableReason(game: Game, now = Date.now()): string | null {
   if (game.status !== 'scheduled') return 'Game is not scheduled'
   if (!Number.isFinite(Date.parse(game.start_time))) return 'Kickoff unknown'
   if (Date.parse(game.start_time) <= now) return 'Kickoff reached'
   const valid = game.markets.some(m => {
     const pair = m.selections.filter(s => s.is_active)
+    const sides = new Set(pair.map(s => s.side))
+    const completeSides = sides.size === 2 && (
+      (sides.has('home') && sides.has('away')) ||
+      (sides.has(game.home_team) && sides.has(game.away_team))
+    )
     return m.type === 'spread' && m.status === 'active' && pair.length === 2 && game.home_team !== game.away_team &&
-      new Set(pair.map(s => s.side)).size === 2 && pair.every(s => [game.home_team, game.away_team].includes(s.side) && s.line !== null && Number.isFinite(Number(s.line)) && Number.isFinite(Number(s.price)) && Number(s.price) > 1) && Number(pair[0].line) === -Number(pair[1].line)
+      completeSides && pair.every(s => s.line !== null && s.line.trim() !== '' && Number.isFinite(Number(s.line)) && Number.isFinite(Number(s.price)) && Number(s.price) > 1) && Number(pair[0].line) === -Number(pair[1].line)
   })
   return valid ? null : 'No eligible paired spread'
 }
@@ -35,6 +44,8 @@ function GameCard({ game, selected, toggle, now }: { game: Game; selected: boole
         <span className="badge">{game.status.replaceAll('_', ' ')}</span>
       </header>
       <h2 id={`game-${game.id}`}>{game.away_team} <span className="at">at</span> {game.home_team}</h2>
+      {game.notes?.startsWith('Demo data:') && <p className="demo-note"><strong>Demo data</strong> · Fictional games and odds for the simulator. These are not current schedules or live prices.</p>}
+      {game.status === 'scheduled' && Date.parse(game.start_time) <= now && <p>Kickoff reached · Awaiting provider status update</p>}
       <time dateTime={game.start_time}>{Number.isFinite(Date.parse(game.start_time)) ? kickoffFormat.format(new Date(game.start_time)) : 'Kickoff unknown'}</time>
       {game.venue && <p className="venue">{game.venue}</p>}
       {(game.away_score !== null || game.home_score !== null) && (
@@ -48,7 +59,7 @@ function GameCard({ game, selected, toggle, now }: { game: Game; selected: boole
             <h3>Spread{markets.length > 1 ? ` · Market ${index + 1}` : ''}</h3>
             <ul className="selections">{market.selections.map(selection => (
               <li key={selection.id}>
-                <span className="selection-team">{selection.side}</span>
+                <span className="selection-team">{teamLabel(game, selection.side)}</span>
                 <strong className="line">{formatLine(selection.line!)}</strong>
                 <span className="price">Decimal odds <strong>{selection.price}</strong></span>
               </li>
@@ -72,6 +83,38 @@ export default function GamesPage() {
   const [error, setError] = useState<string | null>(null)
   const [now, setNow] = useState(Date.now())
   const pending = useRef<AbortController | null>(null)
+  const refreshPending = useRef<AbortController | null>(null)
+  const refreshButton = useRef<HTMLButtonElement>(null)
+  const dialog = useRef<HTMLDialogElement>(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshMessage, setRefreshMessage] = useState<string | null>(null)
+  useEffect(() => () => { refreshPending.current?.abort() }, [])
+  useEffect(() => {
+    if (refreshMessage !== null) dialog.current?.showModal()
+  }, [refreshMessage])
+  async function refresh() {
+    if (refreshPending.current) return
+    const controller = new AbortController()
+    refreshPending.current = controller
+    setRefreshing(true)
+    try {
+      const result = await refreshGames(controller.signal)
+      if (controller.signal.aborted) return
+      setRefreshMessage(result.message)
+      if (result.data_changed) {
+        pending.current?.abort(); pending.current = null
+        setBusy(false); setPreview(null); setError(null); setSelected([])
+        setAttempt(n => n + 1)
+      }
+    } catch {
+      if (!controller.signal.aborted) setRefreshMessage('Refresh failed. Unable to refresh games. Please try again.')
+    } finally {
+      if (refreshPending.current === controller) {
+        refreshPending.current = null
+        if (!controller.signal.aborted) setRefreshing(false)
+      }
+    }
+  }
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000)
     return () => { clearInterval(timer); pending.current?.abort() }
@@ -103,7 +146,7 @@ export default function GamesPage() {
   useEffect(() => {
     const controller = new AbortController()
     setState({ status: 'loading' })
-    getGames(controller.signal).then(games => {
+    getGames(controller.signal, 'current').then(games => {
       if (!controller.signal.aborted) setState({ status: 'success', games })
     }).catch(() => {
       if (!controller.signal.aborted) setState({ status: 'error' })
@@ -116,8 +159,23 @@ export default function GamesPage() {
         <p className="brand">AutoPredict <span> / College football</span></p>
         <h1>Games</h1>
         <p className="intro">College football matchups and stored spread selections.</p>
-        <p className="demo-note"><strong>Demo data</strong> · Fictional games and odds for the simulator. These are not current schedules or live prices.</p>
+        <p>Odds are saved observations, not guaranteed live prices.</p>
+        <button ref={refreshButton} disabled={refreshing} onClick={refresh}>{refreshing ? 'Refreshing…' : 'Refresh'}</button>
       </header>
+      <dialog ref={dialog} aria-labelledby="refresh-title" aria-describedby="refresh-message"
+        onKeyDown={event => {
+          // The dialog has one focusable control. Keep both tab directions on it,
+          // including in browsers that otherwise move focus to browser chrome.
+          if (event.key === 'Tab') {
+            event.preventDefault()
+            event.currentTarget.querySelector('button')?.focus()
+          }
+        }}
+        onClose={() => { setRefreshMessage(null); refreshButton.current?.focus() }}>
+        <h2 id="refresh-title">Refresh result</h2>
+        <p id="refresh-message">{refreshMessage}</p>
+        <button autoFocus onClick={() => dialog.current?.close()}>Close</button>
+      </dialog>
       <div role="status" aria-live="polite">
         {state.status === 'loading' && <p className="state-panel">Loading games…</p>}
         {state.status === 'success' && <p className="results-summary">{state.games.length} {state.games.length === 1 ? 'game' : 'games'} · Kickoff times in your local timezone ({Intl.DateTimeFormat().resolvedOptions().timeZone})</p>}
@@ -132,7 +190,7 @@ export default function GamesPage() {
         <p>Preview one randomly chosen spread per eligible game. The server checks eligibility when you execute.</p>
         {strategyError ? <><p role="alert">Strategies couldn’t be loaded.</p><button onClick={() => setStrategyAttempt(n => n + 1)}>Retry strategies</button></> : strategies === null ? <p>Loading strategy…</p> : !strategy ? <p>Random Strategy unavailable</p> : !strategy.is_active ? <p>Random Strategy inactive</p> : null}
         <p>{selected.length} games selected</p>
-        <button disabled={!selected.length || !strategy?.is_active || busy} onClick={execute}>{busy ? 'Generating decisions…' : 'Execute Random Strategy'}</button>
+        <button disabled={!selected.length || !strategy?.is_active || busy} onClick={execute}>{busy ? 'Generating decisions…' : 'Preview decisions'}</button>
         {error && <p role="alert">{error}</p>}
         <div aria-live="polite">{busy && <p>Generating decision preview…</p>}</div>
         {preview && <section className="decision-results" aria-label="Decision preview">
@@ -141,14 +199,15 @@ export default function GamesPage() {
           {!preview.decisions.length && <p>No eligible games — all selected games were skipped.</p>}
           <ul>{preview.decisions.map(d => <li key={d.game_id}>
             <p>{state.games.find(g => g.id === d.game_id)?.away_team} at {state.games.find(g => g.id === d.game_id)?.home_team}</p>
-            <strong>{d.side} {formatLine(d.line)}</strong> · Decimal odds <strong>{d.price}</strong>
+            <strong>{teamLabel(state.games.find(g => g.id === d.game_id), d.side)} {formatLine(d.line)}</strong> · Decimal odds <strong>{d.price}</strong>
             {d.quote_provenance && <p>Saved quote from {d.quote_provenance.bookmaker} · Fetched {d.quote_provenance.fetched_at}{d.quote_provenance.source_timestamp && ` · Source ${d.quote_provenance.source_timestamp}`}</p>}
           </li>)}</ul>
           <ul>{preview.skipped_games.map(skip => <li key={skip.game_id}>{state.games.find(g => g.id === skip.game_id)?.away_team} at {state.games.find(g => g.id === skip.game_id)?.home_team}: {{ game_not_scheduled: 'Game is not scheduled', kickoff_reached: 'Kickoff reached', spread_unavailable: 'Spread unavailable' }[skip.reason]}</li>)}</ul>
         </section>}
       </section>}
+      <DryRunForm selected={selected} strategyId={strategy?.id} enabled={Boolean(strategy?.is_active)} />
       {state.status === 'success' && (state.games.length === 0
-        ? <div className="state-panel"><h2>No games stored yet</h2><p>Games will appear here when data is available.</p></div>
+        ? <div className="state-panel"><h2>No games stored yet</h2><p>No games stored for this week. Use Refresh to load this week’s FBS games.</p></div>
         : <ul className="games-list">{state.games.map(game => <li key={game.id}><GameCard game={game} selected={selected.includes(game.id)} toggle={() => toggle(game.id)} now={now} /></li>)}</ul>)}
     </main>
   )

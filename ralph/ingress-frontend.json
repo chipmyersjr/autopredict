@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "plan": "progress/3_1_game_info_ingress/front_end/plan.md",
+  "progress_file": "ralph/ingress-frontend.progress.json",
+  "context": [
+    "design/1_mvp.html",
+    "design/3_game_info_ingress.html",
+    "design/4_shared_strategies.html",
+    "progress/3_1_game_info_ingress/backend/plan.md"
+  ],
+  "allowed_paths": [
+    "frontend/src/*",
+    "frontend/tests/*",
+    "frontend/package.json",
+    "frontend/package-lock.json",
+    "frontend/playwright.config.ts",
+    "frontend/tsconfig.json",
+    "frontend/vite.config.ts",
+    "frontend/index.html"
+  ],
+  "protected_paths": ["backend", "migrations", "frontend/Dockerfile", "docker-compose.yml", "Makefile", ".dockerignore"],
+  "environment": {
+    "CFBD_API_KEY": "",
+    "ODDS_API_KEY": "",
+    "ENV_FILE": ".env"
+  },
+  "max_attempts": 3,
+  "task_timeout": 3600,
+  "completion_note": "Browser automation uses controlled API responses and no real provider credentials. Live-provider browser verification is separate and must not be claimed as passed without evidence.",
+  "instructions": "Implement only the selected frontend task. Read the existing backend routes and response schemas as the API authority; do not edit backend code, migrations, design, runner/configuration, or Git state. Preserve strategy and dry-run behavior. Use existing Playwright tests with controlled API routing to validate refresh, current-week loading, role-based imported selections, dialogs, error cases, and interactions. FE-02 must run actual browser automation against the resulting UI, not merely write verification notes; add controlled-response tests for any missing acceptance scenarios. Keep existing live-backend tests opt-in and distinguish controlled browser evidence from unperformed live-provider checks. No provider calls or credentials are needed. Do not loosen checks, skip new tests, or mark work complete yourself. The runner owns plan/progress updates and one commit per task. Task order is FE-01, FE-03, FE-02 because FE-02 depends on the imported spread fix.",
+  "checks": [
+    {"name": "Whitespace", "argv": ["git", "diff", "--check"], "timeout": 15},
+    {"name": "Prepare sandbox development settings", "argv": ["make", "setup"], "timeout": 120},
+    {"name": "Build frontend dependencies", "argv": ["docker", "compose", "build", "frontend"], "timeout": 600},
+    {
+      "name": "Frontend type/build checks and Chromium browser tests",
+      "argv": ["docker", "compose", "run", "--rm", "--no-deps", "--volume", "{repo}/frontend/tests:/app/frontend/tests:ro", "--volume", "{repo}/frontend/playwright.config.ts:/app/frontend/playwright.config.ts:ro", "--env", "PLAYWRIGHT_CHANNEL=chromium", "--env", "LIVE_API=", "--env", "LIVE_RUN_DB_FILE=", "frontend", "sh", "-ec", "npx playwright install --with-deps chromium && npm run build && npm test"],
+      "timeout": 900
+    }
+  ],
+  "tasks": [
+    {"id": "FE-01", "dependencies": ["BE-11"]},
+    {"id": "FE-03", "dependencies": ["BE-09"]},
+    {"id": "FE-02", "dependencies": ["FE-01", "FE-03", "BE-12"]}
+  ]
+}

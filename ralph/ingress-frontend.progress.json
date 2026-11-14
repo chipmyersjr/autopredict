@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "plan": "progress/3_1_game_info_ingress/front_end/plan.md",
+  "area_status": "complete",
+  "tasks": {
+    "BE-09": {
+      "title": "Backend prerequisite: paired current odds and observations",
+      "status": "complete"
+    },
+    "BE-11": {
+      "title": "Backend prerequisite: refresh and stored current-week APIs",
+      "status": "complete"
+    },
+    "BE-12": {
+      "title": "Backend prerequisite: automated ingress handoff",
+      "status": "complete"
+    },
+    "FE-01": {
+      "title": "Add Refresh button and popup",
+      "status": "complete",
+      "summary": "Fixed popup focus containment for Tab and Shift+Tab; expanded controlled browser tests for reopening, dismissal, and focus restoration. Whitespace check passed. Build/browser checks await the runner because Docker access is denied and Node is unavailable. No Git or progress operations performed.",
+      "checks": [
+        "Whitespace passed",
+        "Prepare sandbox development settings passed",
+        "Build frontend dependencies passed",
+        "Frontend type/build checks and Chromium browser tests passed"
+      ],
+      "files": [
+        "frontend/src/api/games.ts",
+        "frontend/src/pages/GamesPage.tsx",
+        "frontend/src/styles.css",
+        "frontend/tests/games.spec.ts",
+        "frontend/tests/refresh.spec.ts",
+        "frontend/tests/runs.spec.ts",
+        "frontend/tests/strategies.spec.ts",
+        "progress/3_1_game_info_ingress/front_end/plan.md",
+        "ralph/ingress-frontend.progress.json"
+      ]
+    },
+    "FE-03": {
+      "title": "Fix imported spread eligibility and team labels",
+      "status": "complete",
+      "summary": "Implemented complete role/team-name pair eligibility and team labels in spread cards and previews. Added controlled Playwright coverage for selection, preview, dry-run submission, invalid pairs, and kickoff guards. Whitespace checks passed. Build/browser execution awaits the runner: Node is unavailable and Docker access is denied. No protected files or Git state modified.",
+      "checks": [
+        "Whitespace passed",
+        "Prepare sandbox development settings passed",
+        "Build frontend dependencies passed",
+        "Frontend type/build checks and Chromium browser tests passed"
+      ],
+      "files": [
+        "frontend/src/pages/GamesPage.tsx",
+        "frontend/tests/imported-spreads.spec.ts",
+        "progress/3_1_game_info_ingress/front_end/plan.md",
+        "ralph/ingress-frontend.progress.json"
+      ]
+    },
+    "FE-02": {
+      "title": "Validate minimal refresh flow",
+      "status": "complete",
+      "summary": "Fixed controlled API routing to exclude Vite source modules while preserving strict backend request checks. Whitespace validation passed. Browser/build execution was attempted but Docker socket access is denied and Node is unavailable; runner verification is required. No live-provider checks performed. No protected files or Git state changed.",
+      "checks": [
+        "Whitespace passed",
+        "Prepare sandbox development settings passed",
+        "Build frontend dependencies passed",
+        "Frontend type/build checks and Chromium browser tests passed"
+      ],
+      "files": [
+        "frontend/tests/imported-spreads.spec.ts",
+        "frontend/tests/refresh.spec.ts",
+        "progress/3_1_game_info_ingress/front_end/plan.md",
+        "ralph/ingress-frontend.progress.json"
+      ]
+    }
+  }
+}

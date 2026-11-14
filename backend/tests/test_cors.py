@@ -27,6 +27,18 @@ def test_disallowed_origin():
         assert "access-control-allow-origin" not in preflight.headers
 
 
+def test_refresh_post_preflight():
+    origin = "http://localhost:5173"
+    with TestClient(app) as client:
+        response = client.options("/api/games/refresh", headers={
+            "Origin": origin, "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "Content-Type",
+        })
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == origin
+    assert "POST" in response.headers["access-control-allow-methods"]
+
+
 def test_origins_from_root_env(tmp_path, monkeypatch):
     monkeypatch.delenv("CORS_ORIGINS", raising=False)
     env = tmp_path / ".env"
