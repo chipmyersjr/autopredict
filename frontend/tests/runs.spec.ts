@@ -8,7 +8,7 @@ const run = { id: runId, user_id: '50000000-0000-4000-8000-000000000001', strate
 const bet = { id: '70000000-0000-4000-8000-000000000001', run_id: runId, selection_id: 'h', game_id: id, market_id: 'm', home_team: 'USC', away_team: 'UCLA', side: 'USC', line: '0.00', price: '1.9876', stake: '10.00', status: 'open', result: null, profit: null, placed_at: run.start_time, settled_at: null, kickoff_at_placement: '2099-10-02T19:00:00Z', quote_provenance: null, created_at: run.start_time, updated_at: run.start_time }
 const result = { run, bets: [bet], skipped_games: skips }
 test.beforeEach(async ({ page }) => {
-  await page.route('**/api/games', r => r.fulfill({ json: [game(id), game(second)] }))
+  await page.route('**/api/games?window=current', r => r.fulfill({ json: [game(id), game(second)] }))
   await page.route('**/api/strategies', r => r.fulfill({ json: [strategy] }))
   await page.route('**/api/runs', r => r.fulfill({ json: r.request().method() === 'POST' ? result : [run] }))
   await page.route(`**/api/runs/${runId}`, r => r.fulfill({ json: run }))

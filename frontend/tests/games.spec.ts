@@ -13,7 +13,7 @@ function market(id: string, selections: Selection[], extra: Partial<Market> = {}
   return { ...timestamps, id, game_id: 'game', type: 'spread', status: 'active', description: null, selections, ...extra }
 }
 function game(extra: Partial<Game> = {}): Game {
-  return { ...timestamps, id: 'game', season: 2026, week: 5, home_team: 'USC', away_team: 'UCLA', start_time: '2026-10-02T19:00:00+00:00', status: 'scheduled', home_score: null, away_score: null, venue: null, notes: null, markets: [market('market', [selection('home', 'USC', '-3.50'), selection('away', 'UCLA', '3.50')])], ...extra }
+  return { ...timestamps, id: 'game', season: 2026, week: 5, home_team: 'USC', away_team: 'UCLA', start_time: '2026-10-02T19:00:00+00:00', status: 'scheduled', home_score: null, away_score: null, venue: null, notes: 'Demo data: fictional matchup', markets: [market('market', [selection('home', 'USC', '-3.50'), selection('away', 'UCLA', '3.50')])], ...extra }
 }
 
 test('renders paired signed spreads, exact odds and local kickoff', async ({ page }) => {
@@ -32,11 +32,11 @@ test('renders paired signed spreads, exact odds and local kickoff', async ({ pag
   await expect(card.locator('.price strong')).toHaveText(['1.9091', '1.9091'])
   await expect(card.getByText('Score:')).toHaveCount(0)
   await expect(page.getByText(/Fictional games and odds/)).toBeVisible()
-  expect(requests.every(url => url.endsWith('/api/games'))).toBeTruthy()
+  expect(requests.every(url => url.endsWith('/api/games?window=current'))).toBeTruthy()
 })
 
 test('keeps markets separate, excludes closed/inactive/null lines and preserves zero scores', async ({ page }) => {
-  await page.route('**/api/games', route => route.fulfill({ json: [game({ status: 'completed', home_score: 0, away_score: null, markets: [
+  await page.route('**/api/games?window=current', route => route.fulfill({ json: [game({ status: 'completed', home_score: 0, away_score: null, markets: [
     market('zero', [selection('z', 'USC', '0.00'), selection('null', 'UCLA', null)]),
     market('second', [selection('s', 'UCLA', '1234567890.25', { price: '1.9876' })]),
     market('closed', [selection('c', 'Hidden closed', '-7.00')], { status: 'closed' }),
@@ -54,7 +54,7 @@ test('keeps markets separate, excludes closed/inactive/null lines and preserves 
 })
 
 test('empty database is different from missing spreads', async ({ page }) => {
-  await page.route('**/api/games', route => route.fulfill({ json: [] }))
+  await page.route('**/api/games?window=current', route => route.fulfill({ json: [] }))
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'No games stored yet' })).toBeVisible()
   await expect(page.getByRole('article')).toHaveCount(0)
@@ -66,7 +66,7 @@ for (const failure of ['503', 'network', 'invalid-json']) {
     let recover = false
     let release!: () => void
     const pending = new Promise<void>(resolve => { release = resolve })
-    await page.route('**/api/games', async route => {
+    await page.route('**/api/games?window=current', async route => {
       if (recover) { await pending; await route.fulfill({ json: [game()] }); return }
       if (failure === 'network') await route.abort('failed')
       else if (failure === 'invalid-json') await route.fulfill({ body: 'not json', contentType: 'application/json' })
@@ -74,8 +74,7 @@ for (const failure of ['503', 'network', 'invalid-json']) {
     })
     await page.goto('/')
     await expect(page.getByRole('alert')).toBeVisible()
-    await page.keyboard.press('Tab')
-    await page.keyboard.press('Tab')
+    await page.getByRole('button', { name: 'Refresh', exact: true }).focus()
     await page.keyboard.press('Tab')
     await expect(page.getByRole('button', { name: 'Retry' })).toBeFocused()
     expect(await page.getByRole('button', { name: 'Retry', exact: true }).evaluate(el => getComputedStyle(el).outlineStyle)).toBe('solid')
@@ -94,7 +93,7 @@ test('StrictMode cleanup aborts stale fetch and cannot overwrite latest state', 
     let calls = 0
     const original = window.fetch
     window.fetch = async (input, init) => {
-      if (!String(input).endsWith('/api/games')) return original(input, init)
+      if (!String(input).endsWith('/api/games?window=current')) return original(input, init)
       calls++
       if (calls === 1) {
         await new Promise(resolve => setTimeout(resolve, 500))
@@ -104,7 +103,7 @@ test('StrictMode cleanup aborts stale fetch and cannot overwrite latest state', 
       return original(input, init)
     }
   })
-  await page.route('**/api/games', route => route.fulfill({ json: [game()] }))
+  await page.route('**/api/games?window=current', route => route.fulfill({ json: [game()] }))
   await page.goto('/')
   await expect(page.getByRole('article')).toHaveCount(1)
   await expect.poll(() => page.evaluate(() => (window as unknown as { staleAborted: boolean }).staleAborted)).toBe(true)
@@ -115,7 +114,7 @@ for (const width of [375, 1280]) {
   test(`long teams fit at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 })
     const longName = 'A very long college football team name with many words'
-    await page.route('**/api/games', route => route.fulfill({ json: [game({ home_team: longName, markets: [market('long', [selection('long', longName, '-3.50')])] })] }))
+    await page.route('**/api/games?window=current', route => route.fulfill({ json: [game({ home_team: longName, markets: [market('long', [selection('long', longName, '-3.50')])] })] }))
     await page.goto('/')
     await expect(page.getByRole('article')).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)

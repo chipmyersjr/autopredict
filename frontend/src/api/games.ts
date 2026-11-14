@@ -13,8 +13,25 @@ export interface Game extends Timestamps {
   venue: string | null; notes: string | null; markets: Market[]
 }
 const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '')
-export async function getGames(signal: AbortSignal): Promise<Game[]> {
-  const response = await fetch(`${baseUrl}/api/games`, { signal })
+export async function getGames(signal: AbortSignal, window?: 'current'): Promise<Game[]> {
+  const response = await fetch(`${baseUrl}/api/games${window ? '?window=current' : ''}`, { signal })
   if (!response.ok) throw new Error('Unable to load games')
   return response.json()
+}
+
+export interface RefreshResult {
+  success: boolean; reason: string; message: string
+  remaining_refreshes: number | null; reserved_for_sunday: number
+  retry_at: string | null; data_changed: boolean; run_id: string | null
+}
+export async function refreshGames(signal: AbortSignal): Promise<RefreshResult> {
+  const response = await fetch(`${baseUrl}/api/games/refresh`, { method: 'POST', signal })
+  const value = await response.json()
+  const nullableString = (v: unknown) => v === null || typeof v === 'string'
+  const count = (v: unknown) => typeof v === 'number' && Number.isInteger(v) && v >= 0
+  if (!value || typeof value.success !== 'boolean' || typeof value.reason !== 'string' || !value.reason ||
+    typeof value.message !== 'string' || !value.message.trim() || typeof value.data_changed !== 'boolean' ||
+    !(value.remaining_refreshes === null || count(value.remaining_refreshes)) || !count(value.reserved_for_sunday) ||
+    !nullableString(value.retry_at) || !nullableString(value.run_id)) throw new Error('Invalid refresh response')
+  return value
 }

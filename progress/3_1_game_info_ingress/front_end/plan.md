@@ -1,12 +1,12 @@
 # Design 3, part 1 — Game info ingress frontend
 
-Area status: `not_started`
+Area status: `in_progress`
 
 ## Objective and governing design
 
 Add the accepted Games-page Refresh flow under [design/3_game_info_ingress.html](../../../design/3_game_info_ingress.html), especially sections 2–7, and [design/1_mvp.html](../../../design/1_mvp.html) sections 4 and 8. Preserve [design/4_shared_strategies.html](../../../design/4_shared_strategies.html) shared-strategy behavior.
 
-Planning status: ready; FE-03 added November 14, 2026 following live ingress verification. Area status tracks runtime delivery: FE-01, FE-02, and FE-03 remain not_started. Earlier logs are history; accepted defaults no longer await review.
+Planning status: ready. Current execution status and evidence are recorded in the task checklist and latest loop entries.
 
 ## Tasks
 
@@ -42,13 +42,13 @@ No quota panel, separate status endpoint, additional controls, or detailed statu
 - Empty current-week data prompts the user to Refresh. Empty-week success includes “No FBS games this week.” Backend messages own remaining counts, Sunday reservation, and retry/reset wording; do not calculate quotas or automatically retry in the browser.
 - Completed games display supplied scores. Kickoff-reached labels remain distinguishable from provider-confirmed status. Real current-week games must not carry the existing blanket demo-data label; retain demo labels wherever fixtures are displayed. Describe odds as saved observations.
 
-- [ ] FE-01 — Add Refresh button and popup
-  - Status: not_started
+- [x] FE-01 — Add Refresh button and popup
+  - Status: complete
   - Scope: One button on the Games page, disabled during its request; POST refresh; popup success with remaining refreshes or failure with safe backend reason. Use GET window=current to load/reload stored games, including after partial success when data_changed is true.
   - Dependencies: Completed `1_1_mvp_vertical_slice_1` Games view; ingress BE-11 endpoint/current-window contract. GET/POST CORS already exists.
   - Acceptance criteria: Opening page does not call external providers; click calls refresh once; successful result shows “Refresh successful. X refreshes remaining this week”; partial/failure messages explain results and limits; transport failure shows generic failure; button recovers in every path. Empty-state prompt, empty-week success, completed scores, kickoff labels, and accurate demo labeling work. Existing strategy/dry-run controls remain functional. No status panel/extra refresh controls.
   - Validation: Frontend interaction tests for success, partial/blocked/error, double click prevention, re-enable, reload-after-changes including partial HTTP 200, handled 429/409/503/422 envelopes, malformed responses, empty week, popup accessibility/focus, scores/labels, existing controls, and no refresh on mount; build/type checks.
-  - Completion notes: Pending.
+  - Completion notes: Fixed popup focus containment for Tab and Shift+Tab; expanded controlled browser tests for reopening, dismissal, and focus restoration. Whitespace check passed. Build/browser checks await the runner because Docker access is denied and Node is unavailable. No Git or progress operations performed. Independent checks: Whitespace passed; Prepare sandbox development settings passed; Build frontend dependencies passed; Frontend type/build checks and Chromium browser tests passed. Files: frontend/src/api/games.ts, frontend/src/pages/GamesPage.tsx, frontend/src/styles.css, frontend/tests/games.spec.ts, frontend/tests/refresh.spec.ts, frontend/tests/runs.spec.ts, frontend/tests/strategies.spec.ts, progress/3_1_game_info_ingress/front_end/plan.md, ralph/ingress-frontend.progress.json. Logs: .git/ralph/9754ef8d39f00e2a/FE-01-002.*. Browser automation uses controlled API responses and no real provider credentials. Live-provider browser verification is separate and must not be claimed as passed without evidence.
 
 - [ ] FE-03 — Fix imported spread eligibility and team labels
   - Status: not_started
@@ -97,3 +97,10 @@ FE-01, FE-02, and FE-03 are complete and validated against BE-11. The page reads
 - Validation: Compared Games-page eligibility/rendering with imported `home`/`away` selections, backend support for both complete side formats, and ingress design sections 5–6. Document-only update; runtime tests not run.
 - Blockers: None for planning this fix.
 - Next: Implement FE-03 before the FE-02 browser validation; retain FE-01 Refresh-flow scope.
+
+### 2026-11-14 21:41 UTC — FE-01 Ralph execution
+
+- Completed tasks: FE-01.
+- Validation: Whitespace passed; Prepare sandbox development settings passed; Build frontend dependencies passed; Frontend type/build checks and Chromium browser tests passed.
+- Completion notes: Fixed popup focus containment for Tab and Shift+Tab; expanded controlled browser tests for reopening, dismissal, and focus restoration. Whitespace check passed. Build/browser checks await the runner because Docker access is denied and Node is unavailable. No Git or progress operations performed.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
