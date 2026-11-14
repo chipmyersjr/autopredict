@@ -45,7 +45,22 @@
     },
     "BE-03": {
       "title": "Add persisted dashboard aggregates",
-      "status": "not_started"
+      "status": "complete",
+      "summary": "Implemented snapshot-consistent dashboard totals, recent results, and UTC cumulative performance with PostgreSQL coverage. Whitespace and Python syntax checks passed. Runtime tests await runner verification: Docker access is denied and local Python dependencies are unavailable. No plan, progress, or Git state edits performed.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build backend dependencies passed",
+        "Backend regressions with disposable PostgreSQL databases passed"
+      ],
+      "files": [
+        "backend/app/dashboard.py",
+        "backend/app/routes.py",
+        "backend/app/schemas.py",
+        "backend/tests/test_dashboard.py",
+        "progress/1_4_mvp_vertical_slice_4/backend/plan.md",
+        "ralph/slice4-backend.progress.json"
+      ]
     },
     "BE-04": {
       "title": "Validate and document the full resolution handoff",

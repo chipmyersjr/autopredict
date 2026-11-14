@@ -70,13 +70,13 @@ Independent mixed-Run oracle: bankroll 100.00, four stakes of 10.00; one win at 
   - Validation: PostgreSQL API tests for mixed oracle, all-pending/missing scores/canceled/skipped games, independent Runs on one game, concurrent same-Run POSTs, score-writer locking, injected failure rollback, overflow, lost response/restart retry, ownership, 404/409/422/503, OpenAPI and creation replay after settlement. Prove GET calls issue no writes.
   - Completion notes: Implemented atomic settlement, extended Run/Bet history, and PostgreSQL regression tests covering accounting, retries, concurrency, locking, and rollback. Syntax and whitespace checks passed. Docker access denied locally; runner verification required. FE-04 browser evidence remains pending. No protected files or Git state changed. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: backend/app/routes.py, backend/app/runs.py, backend/app/schemas.py, backend/tests/test_run_settlement.py, progress/1_4_mvp_vertical_slice_4/backend/plan.md, ralph/slice4-backend.progress.json. Logs: .git/ralph/64d424df51d8dd0a/BE-02-002.*. Backend verification only; full-epic live browser acceptance is performed later by frontend FE-04. No live-provider verification is implied.
 
-- [ ] BE-03 — Add persisted dashboard aggregates
-  - Status: not_started
+- [x] BE-03 — Add persisted dashboard aggregates
+  - Status: complete
   - Scope: Implement GET /api/dashboard with consistent local-user totals, recent results and UTC daily cumulative performance.
   - Dependencies: BE-02.
   - Acceptance criteria: Empty/partial/completed histories yield exact documented totals; unrelated User data is excluded; no provider calls or current-week filtering; aggregate ROI uses total starting bankroll rather than an average of Run ROIs.
   - Validation: PostgreSQL known-total fixtures for multiple independent Runs, zero profit, no Runs, UTC date boundaries, tie ordering/10-result limit, ownership, snapshot consistency and bounded query count.
-  - Completion notes: Not implemented or validated.
+  - Completion notes: Implemented snapshot-consistent dashboard totals, recent results, and UTC cumulative performance with PostgreSQL coverage. Whitespace and Python syntax checks passed. Runtime tests await runner verification: Docker access is denied and local Python dependencies are unavailable. No plan, progress, or Git state edits performed. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: backend/app/dashboard.py, backend/app/routes.py, backend/app/schemas.py, backend/tests/test_dashboard.py, progress/1_4_mvp_vertical_slice_4/backend/plan.md, ralph/slice4-backend.progress.json. Logs: .git/ralph/64d424df51d8dd0a/BE-03-003.*. Backend verification only; full-epic live browser acceptance is performed later by frontend FE-04. No live-provider verification is implied.
 
 - [ ] BE-04 — Validate and document the full resolution handoff
   - Status: not_started
@@ -111,4 +111,11 @@ BE-01 → BE-02 → BE-03 → BE-04. Frontend FE-01 may begin from this settled 
 - Completed tasks: BE-02.
 - Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
 - Completion notes: Implemented atomic settlement, extended Run/Bet history, and PostgreSQL regression tests covering accounting, retries, concurrency, locking, and rollback. Syntax and whitespace checks passed. Docker access denied locally; runner verification required. FE-04 browser evidence remains pending. No protected files or Git state changed.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
+
+### 2026-11-14 23:48 UTC — BE-03 Ralph execution
+
+- Completed tasks: BE-03.
+- Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
+- Completion notes: Implemented snapshot-consistent dashboard totals, recent results, and UTC cumulative performance with PostgreSQL coverage. Whitespace and Python syntax checks passed. Runtime tests await runner verification: Docker access is denied and local Python dependencies are unavailable. No plan, progress, or Git state edits performed.
 - Next: Continue the configured task sequence; live-provider verification remains separately reported.

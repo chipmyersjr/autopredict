@@ -1,6 +1,6 @@
 """Read contracts: Decimal values serialize as exact strings, timestamps as UTC."""
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from uuid import UUID
 from typing import Literal
@@ -250,3 +250,29 @@ class SettlementResponse(BaseModel):
     bets: list[BetResponse]
     settled_bet_ids: list[UUID]
     pending_games: list[PendingGame]
+
+
+class PerformancePoint(BaseModel):
+    date: date
+    profit: Decimal
+    cumulative_profit: Decimal
+
+
+class DashboardResponse(BaseModel):
+    run_count: int
+    active_run_count: int
+    completed_run_count: int
+    starting_bankroll_total: Decimal
+    current_bankroll_total: Decimal
+    available_bankroll_total: Decimal
+    committed_stake_total: Decimal
+    realized_profit: Decimal
+    roi: Decimal | None
+    bet_count: int
+    open_bet_count: int
+    win_count: int
+    loss_count: int
+    push_count: int
+    void_count: int
+    recent_results: list[BetResponse]
+    performance: list[PerformancePoint]

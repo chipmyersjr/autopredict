@@ -24,10 +24,18 @@ from app.schemas import RunCreate, RunResponse, RunCreationResponse, BetResponse
 from app.runs import create_run, read_run, run_response, ordered_bets, bet_response, local_user, RUN_GRAPH
 from app.runs import settle_run
 from app.schemas import SettlementResponse
+from app.schemas import DashboardResponse
+from app.dashboard import read_dashboard
 
 router = APIRouter(prefix="/api", responses={503: {"description": "Database unavailable"}})
 DatabaseSession = Annotated[Session, Depends(get_session)]
 GAME_GRAPH = selectinload(Game.markets).selectinload(Market.selections)
+
+
+@router.get("/dashboard", response_model=DashboardResponse, tags=["Dashboard"])
+def dashboard(session: DatabaseSession):
+    """Totals across independent simulations; never refresh or settle results."""
+    return read_dashboard(session)
 
 
 def find_game(session: Session, game_id: UUID) -> Game:
