@@ -120,3 +120,77 @@ test('keeps source status distinct from kickoff and labels only demo fixtures', 
   await expect(cards.nth(1).getByText('Demo data', { exact: true })).toBeVisible()
   await expect(page.getByText('Odds are saved observations, not guaranteed live prices.')).toBeVisible()
 })
+
+// These messages mirror RefreshService.result, including provider reset wording.
+// Controlled browser evidence only: no provider or quota-enforcement integration.
+for (const outcome of [
+  { reason: 'weekly_limit', remaining: 0, reserved: 0, retry: '2026-10-05T07:00:00+00:00', message: 'Refresh failed: all 20 weekly refreshes have been used. Provider availability follows separate limits. 0 refreshes remaining this week.' },
+  { reason: 'sunday_reserve', remaining: 2, reserved: 2, retry: '2026-10-04T07:00:00+00:00', message: 'Refresh failed: the remaining 2 refreshes are reserved until Sunday. 2 refreshes remaining this week. 2 are reserved until Sunday.' },
+  { reason: 'cooldown', remaining: 17, reserved: 2, retry: '2026-10-03T18:01:00+00:00', message: 'Refresh failed: refreshed recently. Wait until the retry time. 17 refreshes remaining this week. 2 are reserved until Sunday.' },
+  { reason: 'provider_budget', remaining: 17, reserved: 2, retry: null, message: "Refresh failed: a provider's free allowance safety limit was reached. External key use can exhaust it earlier. 17 refreshes remaining this week. 2 are reserved until Sunday. Provider retry/reset time: not yet known." },
+  { reason: 'provider_rate_limit', remaining: 17, reserved: 2, retry: '2026-10-03T19:00:00+00:00', message: 'Refresh failed: a provider temporarily limited requests. 17 refreshes remaining this week. 2 are reserved until Sunday. Provider retry/reset time: 2026-10-03T19:00:00+00:00.' },
+]) test(`${outcome.reason} preserves backend text and saved data without retrying`, async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-10-03T18:00:00Z') })
+  const requests: string[] = []
+  // Match backend paths only: Vite also serves modules under /src/api/.
+  await page.route(url => url.pathname.startsWith('/api/'), r => {
+    const url = new URL(r.request().url())
+    const key = `${r.request().method()} ${url.pathname}${url.search}`
+    requests.push(key)
+    if (key === 'GET /api/strategies') return r.fulfill({ json: [] })
+    if (key === 'GET /api/games?window=current') return r.fulfill({ json: [completed] })
+    if (key === 'POST /api/games/refresh') return r.fulfill({ status: 429, json: {
+      ...envelope, success: false, reason: outcome.reason, message: outcome.message,
+      remaining_refreshes: outcome.remaining, reserved_for_sunday: outcome.reserved,
+      retry_at: outcome.retry, data_changed: false,
+    } })
+    throw new Error(`Unexpected API request: ${key}`)
+  })
+  await page.goto('/')
+  await expect(page.locator('.scores')).toHaveText('Score: UCLA 21 · USC 0')
+  const readsBefore = requests.filter(r => r === 'GET /api/games?window=current').length
+  await expect(page.getByRole('button', { name: 'Refresh', exact: true })).toHaveCount(1)
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(1)
+  await expect(page.locator('#refresh-message')).toHaveText(outcome.message)
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  await page.clock.fastForward(120_000)
+  await expect(page.locator('.scores')).toHaveText('Score: UCLA 21 · USC 0')
+  await expect(page.getByRole('button', { name: 'Refresh', exact: true })).toBeEnabled()
+  expect(requests.filter(r => r === 'POST /api/games/refresh')).toHaveLength(1)
+  expect(requests.filter(r => r === 'GET /api/games?window=current')).toHaveLength(readsBefore)
+  await expect(page.locator('input[type="password"]')).toHaveCount(0)
+  await expect(page.getByLabel(/API key|provider credentials/i)).toHaveCount(0)
+})
+
+for (const partial of [false, true]) test(`Sunday ${partial ? 'partial' : 'full'} refresh retains finals and reloads committed results`, async ({ page }) => {
+  // Sunday evening Pacific: both kickoffs have passed, but the server's current
+  // Monday-Sunday window still includes them. The UI must not filter them out.
+  await page.clock.install({ time: new Date('2026-10-05T04:00:00Z') })
+  let stored = [completed], posts = 0, reads = 0
+  const sundayFinal = { ...completed, id: 'sunday-final', home_team: 'Oregon', away_team: 'Washington', start_time: '2026-10-05T02:00:00Z', home_score: 28, away_score: 24 }
+  const message = partial
+    ? "Refresh failed to update all data. Successful updates were saved; failed stages kept saved data. 1 refreshes remaining this week. Games/results updated. Spreads: Refresh failed: a provider's free allowance safety limit was reached. External key use can exhaust it earlier. Provider retry/reset time: not yet known."
+    : 'Refresh successful. 1 refreshes remaining this week.'
+  await page.route('**/api/games?window=current', r => { reads++; return r.fulfill({ json: stored }) })
+  await page.route('**/api/games/refresh', r => {
+    posts++
+    stored = [sundayFinal, completed]
+    return r.fulfill({ json: { ...envelope, success: !partial, reason: partial ? 'partial_failure' : 'refreshed', message, remaining_refreshes: 1, reserved_for_sunday: 0 } })
+  })
+  await page.goto('/')
+  await expect(page.getByRole('article')).toHaveCount(1)
+  const initialReads = reads
+  expect(posts).toBe(0)
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click()
+  await expect(page.locator('#refresh-message')).toHaveText(message)
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(page.getByRole('article')).toHaveCount(2)
+  await expect(page.locator('.scores')).toHaveText(['Score: Washington 24 · Oregon 28', 'Score: UCLA 21 · USC 0'])
+  for (const box of await page.getByRole('checkbox').all()) await expect(box).toBeDisabled()
+  expect(reads).toBe(initialReads + 1)
+  // A new page load reads the same stored results without another refresh.
+  await page.reload()
+  await expect(page.locator('.scores')).toHaveText(['Score: Washington 24 · Oregon 28', 'Score: UCLA 21 · USC 0'])
+  expect(posts).toBe(1)
+})

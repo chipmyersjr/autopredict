@@ -11,7 +11,19 @@ const game = { id: gameId, season: 2099, week: 5, home_team: 'USC', away_team: '
 
 for (const format of ['roles', 'team names']) test(`${format} support team labels, preview and dry-run submission`, async ({ page }) => {
   const selections = format === 'roles' ? pair : [quote('USC', '-3.50', 'h'), quote('UCLA', '3.50', 'a')]
-  await page.route('**/api/games?window=current', r => r.fulfill({ json: [{ ...game, markets: [{ ...market, selections }] }] }))
+  // Exercise imported roles through the complete click -> stored read -> run path.
+  // Team-name fixtures continue to cover the existing preloaded-data path.
+  let stored = format === 'team names', refreshes = 0
+  await page.route('**/api/games?window=current', r => r.fulfill({ json: stored ? [{ ...game, markets: [{ ...market, selections }] }] : [] }))
+  await page.route('**/api/games/refresh', r => {
+    refreshes++
+    expect(r.request().method()).toBe('POST')
+    stored = true
+    return r.fulfill({ json: {
+      success: true, reason: 'refreshed', message: 'Refresh successful. 17 refreshes remaining this week. 2 are reserved until Sunday.',
+      remaining_refreshes: 17, reserved_for_sunday: 2, retry_at: null, data_changed: true, run_id: null,
+    } })
+  })
   await page.route('**/api/strategies', r => r.fulfill({ json: [strategy] }))
   let previews = 0, creations = 0
   await page.route('**/decisions', r => {
@@ -29,6 +41,14 @@ for (const format of ['roles', 'team names']) test(`${format} support team label
   await page.route(`**/api/runs/${runId}`, r => r.fulfill({ json: run }))
   await page.route(`**/api/runs/${runId}/bets`, r => r.fulfill({ json: [] }))
   await page.goto('/')
+  if (format === 'roles') {
+    await expect(page.getByText('No games stored for this week.', { exact: false })).toBeVisible()
+    expect(refreshes).toBe(0)
+    await page.getByRole('button', { name: 'Refresh', exact: true }).click()
+    await expect(page.getByRole('dialog')).toContainText('Refresh successful. 17 refreshes remaining this week. 2 are reserved until Sunday.')
+    await page.getByRole('button', { name: 'Close', exact: true }).click()
+    expect(refreshes).toBe(1)
+  }
   await expect(page.locator('.selection-team')).toHaveText(['USC', 'UCLA'])
   await page.getByRole('checkbox').check()
   await page.getByRole('button', { name: 'Preview decisions' }).click()

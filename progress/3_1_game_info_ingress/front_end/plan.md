@@ -1,6 +1,6 @@
 # Design 3, part 1 — Game info ingress frontend
 
-Area status: `in_progress`
+Area status: `complete`
 
 ## Objective and governing design
 
@@ -58,13 +58,13 @@ No quota panel, separate status endpoint, additional controls, or detailed statu
   - Validation: Frontend interaction tests using imported-role and existing team-name fixtures, including selection, preview, and dry-run submission; negative eligibility cases and kickoff boundaries; build/type checks. Manually verify an imported upcoming matchup displays both team names and is selectable when its pair is valid.
   - Completion notes: Implemented complete role/team-name pair eligibility and team labels in spread cards and previews. Added controlled Playwright coverage for selection, preview, dry-run submission, invalid pairs, and kickoff guards. Whitespace checks passed. Build/browser execution awaits the runner: Node is unavailable and Docker access is denied. No protected files or Git state modified. Independent checks: Whitespace passed; Prepare sandbox development settings passed; Build frontend dependencies passed; Frontend type/build checks and Chromium browser tests passed. Files: frontend/src/pages/GamesPage.tsx, frontend/tests/imported-spreads.spec.ts, progress/3_1_game_info_ingress/front_end/plan.md, ralph/ingress-frontend.progress.json. Logs: .git/ralph/9754ef8d39f00e2a/FE-03-003.*. Browser automation uses controlled API responses and no real provider credentials. Live-provider browser verification is separate and must not be claimed as passed without evidence.
 
-- [ ] FE-02 — Validate minimal refresh flow
-  - Status: not_started
+- [x] FE-02 — Validate minimal refresh flow
+  - Status: complete
   - Scope: Browser smoke test using backend full-success, partial-failure, weekly/Sunday/cooldown/provider quota outcomes and current-week stored games.
   - Dependencies: FE-01; FE-03; BE-12 backend evidence.
   - Acceptance criteria: Popup text/counts match backend; completed Sunday games remain visible; no status dashboard or provider credentials; whole click-to-stored-data path works.
   - Validation: UI build and browser interaction evidence with controlled backend data; record limits and unperformed live checks.
-  - Completion notes: Pending.
+  - Completion notes: Fixed controlled API routing to exclude Vite source modules while preserving strict backend request checks. Whitespace validation passed. Browser/build execution was attempted but Docker socket access is denied and Node is unavailable; runner verification is required. No live-provider checks performed. No protected files or Git state changed. Independent checks: Whitespace passed; Prepare sandbox development settings passed; Build frontend dependencies passed; Frontend type/build checks and Chromium browser tests passed. Files: frontend/tests/imported-spreads.spec.ts, frontend/tests/refresh.spec.ts, progress/3_1_game_info_ingress/front_end/plan.md, ralph/ingress-frontend.progress.json. Logs: .git/ralph/9754ef8d39f00e2a/FE-02-005.*. Browser automation uses controlled API responses and no real provider credentials. Live-provider browser verification is separate and must not be claimed as passed without evidence.
 
 ### 2026-09-30 — Minimal frontend plan accepted direction
 
@@ -110,4 +110,11 @@ FE-01, FE-02, and FE-03 are complete and validated against BE-11. The page reads
 - Completed tasks: FE-03.
 - Validation: Whitespace passed; Prepare sandbox development settings passed; Build frontend dependencies passed; Frontend type/build checks and Chromium browser tests passed.
 - Completion notes: Implemented complete role/team-name pair eligibility and team labels in spread cards and previews. Added controlled Playwright coverage for selection, preview, dry-run submission, invalid pairs, and kickoff guards. Whitespace checks passed. Build/browser execution awaits the runner: Node is unavailable and Docker access is denied. No protected files or Git state modified.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
+
+### 2026-11-14 21:48 UTC — FE-02 Ralph execution
+
+- Completed tasks: FE-02.
+- Validation: Whitespace passed; Prepare sandbox development settings passed; Build frontend dependencies passed; Frontend type/build checks and Chromium browser tests passed.
+- Completion notes: Fixed controlled API routing to exclude Vite source modules while preserving strict backend request checks. Whitespace validation passed. Browser/build execution was attempted but Docker socket access is denied and Node is unavailable; runner verification is required. No live-provider checks performed. No protected files or Git state changed.
 - Next: Continue the configured task sequence; live-provider verification remains separately reported.
