@@ -13,6 +13,11 @@ export interface Game extends Timestamps {
   venue: string | null; notes: string | null; markets: Market[]
 }
 const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '')
+export async function getGame(id: string, signal: AbortSignal): Promise<Game> {
+  const response = await fetch(`${baseUrl}/api/games/${encodeURIComponent(id)}`, { signal })
+  if (!response.ok) throw new Error('Unable to load game')
+  return response.json()
+}
 export async function getGames(signal: AbortSignal, window?: 'current'): Promise<Game[]> {
   const response = await fetch(`${baseUrl}/api/games${window ? '?window=current' : ''}`, { signal })
   if (!response.ok) throw new Error('Unable to load games')

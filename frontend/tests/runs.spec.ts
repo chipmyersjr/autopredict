@@ -147,6 +147,59 @@ for (const width of [375, 1280]) test(`snapshot detail at ${width}px preserves e
   await expect(page.getByRole('heading', { name: 'Runs', exact: true })).toBeVisible()
 })
 
+test.describe('Saved Bet Pacific kickoff from another browser timezone', () => {
+  test.use({ timezoneId: 'Asia/Tokyo' })
+  for (const [kickoff, expected] of [
+    ['2026-11-15T00:45:00Z', 'Sat, Nov 14, 2026, 4:45 PM PST'],
+    ['2026-07-15T00:45:00Z', 'Tue, Jul 14, 2026, 5:45 PM PDT'],
+  ]) test(`saved role sides use snapshot names and Pacific kickoff ${expected}`, async ({ page }) => {
+    await page.route(`**/api/runs/${runId}/bets`, r => r.fulfill({ json: [
+      { ...bet, side: 'home', home_team: 'Arkansas', away_team: 'South Carolina', line: '7.50', kickoff_at_placement: kickoff },
+      { ...bet, id: 'away-bet', side: 'away', home_team: 'Arkansas', away_team: 'South Carolina', line: '-7.50', kickoff_at_placement: kickoff },
+    ] }))
+    await page.route(`**/api/games/${id}`, r => r.fulfill({ json: { ...game(id), home_team: 'Renamed current home', away_team: 'Renamed current away' } }))
+    await page.goto(`/#/runs/${runId}`)
+    const saved = page.getByRole('region', { name: 'Saved Bets', exact: true })
+    await expect(saved.getByText('Arkansas +7.5', { exact: true })).toBeVisible()
+    await expect(saved.getByText('South Carolina -7.5', { exact: true })).toBeVisible()
+    await expect(saved.getByText(expected, { exact: true })).toHaveCount(2)
+    await expect(saved).not.toContainText('Renamed current')
+  })
+})
+
+for (const [status, home, away, finalScore] of [
+  ['completed', 0, 21, 'Final score: UCLA 21 · USC 0'],
+  ['completed', null, 21, null],
+  ['in_progress', 7, 14, null],
+  ['canceled', 0, 0, null],
+] as const) test(`saved Bet shows only confirmed complete scores: ${status}/${home}`, async ({ page }) => {
+  let settlements = 0
+  await page.route('**/settle', r => { settlements++; return r.abort() })
+  await page.route(`**/api/games/${id}`, r => r.fulfill({ json: {
+    ...game(id), status, home_score: home, away_score: away,
+  } }))
+  await page.goto(`/#/runs/${runId}`)
+  const saved = page.getByRole('region', { name: 'Saved Bets', exact: true })
+  await expect(saved.getByText('USC Pick’em', { exact: true })).toBeVisible()
+  if (finalScore) await expect(saved).toContainText(finalScore)
+  else await expect(saved).not.toContainText('Final score:')
+  await expect(saved).toContainText('Not settled')
+  expect(settlements).toBe(0)
+})
+
+test('failed current score read preserves saved settlement evidence and Bet detail', async ({ page }) => {
+  await page.route(`**/api/games/${id}`, r => r.fulfill({ status: 503 }))
+  await page.route(`**/api/runs/${runId}/bets`, r => r.fulfill({ json: [{
+    ...bet, side: 'home', status: 'lost', result: 'lost', profit: '-10.00',
+    settled_at: run.start_time, settlement_game_status: 'completed',
+    settlement_home_score: 0, settlement_away_score: 21,
+  }] }))
+  await page.goto(`/#/runs/${runId}`)
+  const saved = page.getByRole('region', { name: 'Saved Bets', exact: true })
+  await expect(saved).toContainText('Final score (saved at settlement): UCLA 21 · USC 0')
+  await expect(saved).toContainText('Profit: -10.00')
+})
+
 test('timeout retains identity and offers recovery rather than a fresh submission', async ({ page }) => {
   test.setTimeout(25000)
   let release!: () => void

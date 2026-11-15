@@ -4,8 +4,14 @@ import type { Bet, Run } from '../api/runs'
 import { getStrategies } from '../api/strategies'
 import { formatLine } from './GamesPage'
 import { formatRatio } from '../format'
+import SavedBetScore from '../components/SavedBetScore'
 
 const date = (value: string) => new Date(value).toLocaleString(undefined, { timeZone: 'UTC', timeZoneName: 'short' })
+const pacificKickoff = (value: string) => new Date(value).toLocaleString('en-US', {
+  timeZone: 'America/Los_Angeles', weekday: 'short', month: 'short', day: 'numeric',
+  year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+})
+const savedSide = (bet: Bet) => bet.side === 'home' ? bet.home_team : bet.side === 'away' ? bet.away_team : bet.side
 const accountingState = (run: Run) => run.status === 'completed' ? 'Completed' : run.total_profit === null ? 'Pending results' : 'Partially settled'
 const skipLabels = { game_not_scheduled: 'Game is not scheduled', kickoff_reached: 'Kickoff reached', spread_unavailable: 'Spread unavailable' }
 function ErrorPanel({ message, retry }: { message: string; retry: () => void }) {
@@ -108,12 +114,14 @@ export function RunDetail({ id }: { id: string }) {
       })}</ol></section>
       <section className="state-panel" aria-label="Saved Bets"><h2>Saved Bets</h2><p>Execution snapshots are retained when current games or quotes change.</p>
         {!data.bets.length ? <p>No Bets recorded.</p> : <ul className="bet-list">{data.bets.map(bet => <li key={bet.id}><article>
-          <h3>{bet.away_team} at {bet.home_team}</h3><p><strong>{bet.side} {formatLine(bet.line)}</strong> · Decimal odds <strong>{bet.price}</strong> · Stake <strong>{bet.stake}</strong></p>
+          <h3>{bet.away_team} at {bet.home_team}</h3><p><strong>{savedSide(bet)} {formatLine(bet.line)}</strong> · Decimal odds <strong>{bet.price}</strong> · Stake <strong>{bet.stake}</strong></p>
+          <p>Saved kickoff (Pacific): <time dateTime={bet.kickoff_at_placement}>{pacificKickoff(bet.kickoff_at_placement)}</time></p>
+          <SavedBetScore bet={bet} />
           <p><span className="badge">{bet.status}</span> · Result: {bet.result ?? 'Not settled'} · Profit: {bet.profit ?? 'Not settled'}</p>
           {bet.result === 'pushed' && <p>Push · Stake returned · Zero profit</p>}
           {bet.result === 'void' && <p>Canceled · Void · Stake returned · Zero profit</p>}
           {bet.settled_at && <p>Settled <time dateTime={bet.settled_at}>{date(bet.settled_at)}</time> · Saved result: {bet.settlement_game_status} · {bet.away_team} {bet.settlement_away_score ?? '—'} at {bet.home_team} {bet.settlement_home_score ?? '—'}</p>}
-          <p>Placed <time dateTime={bet.placed_at}>{date(bet.placed_at)}</time> · Saved kickoff <time dateTime={bet.kickoff_at_placement}>{date(bet.kickoff_at_placement)}</time></p>
+          <p>Placed <time dateTime={bet.placed_at}>{date(bet.placed_at)}</time></p>
           {bet.quote_provenance ? <p>Saved price from {bet.quote_provenance.bookmaker} · Fetched {date(bet.quote_provenance.fetched_at)}{bet.quote_provenance.source_timestamp && ` · Source ${date(bet.quote_provenance.source_timestamp)}`} · Observation {bet.quote_provenance.observation_id}</p> : <p className="demo-note">Demo data · Fictional saved odds.</p>}
           <p className="record-id">Bet ID: {bet.id}</p>
         </article></li>)}</ul>}
