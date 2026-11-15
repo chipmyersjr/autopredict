@@ -1,6 +1,6 @@
 # Design 1, part 4 — Settlement & P&L backend
 
-Area status: `in_progress`
+Area status: `complete`
 
 Planning status: ready. Current execution status and evidence are recorded in the task checklist and latest loop entries.
 
@@ -78,13 +78,13 @@ Independent mixed-Run oracle: bankroll 100.00, four stakes of 10.00; one win at 
   - Validation: PostgreSQL known-total fixtures for multiple independent Runs, zero profit, no Runs, UTC date boundaries, tie ordering/10-result limit, ownership, snapshot consistency and bounded query count.
   - Completion notes: Implemented snapshot-consistent dashboard totals, recent results, and UTC cumulative performance with PostgreSQL coverage. Whitespace and Python syntax checks passed. Runtime tests await runner verification: Docker access is denied and local Python dependencies are unavailable. No plan, progress, or Git state edits performed. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: backend/app/dashboard.py, backend/app/routes.py, backend/app/schemas.py, backend/tests/test_dashboard.py, progress/1_4_mvp_vertical_slice_4/backend/plan.md, ralph/slice4-backend.progress.json. Logs: .git/ralph/64d424df51d8dd0a/BE-03-003.*. Backend verification only; full-epic live browser acceptance is performed later by frontend FE-04. No live-provider verification is implied.
 
-- [ ] BE-04 — Validate and document the full resolution handoff
-  - Status: not_started
+- [x] BE-04 — Validate and document the full resolution handoff
+  - Status: complete
   - Scope: Extend guarded disposable browser fixture support for final scores; document accounting, settlement requests/retries, fixture use and provider limitations in README.
   - Dependencies: BE-01–BE-03; full epic acceptance also requires frontend FE-04.
   - Acceptance criteria: Real API create → fixture finalization → settle → read/reload produces independently verified P&L without live ingress; no development mutations or generated artifacts remain; frontend has reproducible evidence.
   - Validation: Required backend regression suite with RUN_POSTGRES_TESTS=1, migration drift, actual HTTP smoke plus frontend FE-04 evidence; inspect fixture guard and cleanup. Provider final-confirmation integration is conditional and explicitly unperformed while ingress is absent.
-  - Completion notes: Not implemented or validated.
+  - Completion notes: Added guarded settlement fixtures, deterministic real HTTP acceptance tests, and concise README handoff documentation. Focused checks: 41 passed, 1 skipped; whitespace clean. Docker access denied locally, so PostgreSQL verification awaits the runner. FE-04 browser evidence remains pending. No Git or progress edits performed. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: README.md, backend/tests/test_resolution_handoff.py, frontend/tests/support/live_backend.py, progress/1_4_mvp_vertical_slice_4/backend/plan.md, ralph/slice4-backend.progress.json. Logs: .git/ralph/64d424df51d8dd0a/BE-04-007.*. Backend verification only; full-epic live browser acceptance is performed later by frontend FE-04. No live-provider verification is implied.
 
 ## Epic acceptance and execution order
 
@@ -118,4 +118,11 @@ BE-01 → BE-02 → BE-03 → BE-04. Frontend FE-01 may begin from this settled 
 - Completed tasks: BE-03.
 - Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
 - Completion notes: Implemented snapshot-consistent dashboard totals, recent results, and UTC cumulative performance with PostgreSQL coverage. Whitespace and Python syntax checks passed. Runtime tests await runner verification: Docker access is denied and local Python dependencies are unavailable. No plan, progress, or Git state edits performed.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
+
+### 2026-11-15 00:30 UTC — BE-04 Ralph execution
+
+- Completed tasks: BE-04.
+- Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
+- Completion notes: Added guarded settlement fixtures, deterministic real HTTP acceptance tests, and concise README handoff documentation. Focused checks: 41 passed, 1 skipped; whitespace clean. Docker access denied locally, so PostgreSQL verification awaits the runner. FE-04 browser evidence remains pending. No Git or progress edits performed.
 - Next: Continue the configured task sequence; live-provider verification remains separately reported.

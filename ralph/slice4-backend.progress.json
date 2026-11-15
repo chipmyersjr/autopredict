@@ -1,7 +1,7 @@
 {
   "version": 1,
   "plan": "progress/1_4_mvp_vertical_slice_4/backend/plan.md",
-  "area_status": "in_progress",
+  "area_status": "complete",
   "tasks": {
     "BE-01": {
       "title": "Add settlement evidence and pure spread accounting",
@@ -64,7 +64,21 @@
     },
     "BE-04": {
       "title": "Validate and document the full resolution handoff",
-      "status": "not_started"
+      "status": "complete",
+      "summary": "Added guarded settlement fixtures, deterministic real HTTP acceptance tests, and concise README handoff documentation. Focused checks: 41 passed, 1 skipped; whitespace clean. Docker access denied locally, so PostgreSQL verification awaits the runner. FE-04 browser evidence remains pending. No Git or progress edits performed.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build backend dependencies passed",
+        "Backend regressions with disposable PostgreSQL databases passed"
+      ],
+      "files": [
+        "README.md",
+        "backend/tests/test_resolution_handoff.py",
+        "frontend/tests/support/live_backend.py",
+        "progress/1_4_mvp_vertical_slice_4/backend/plan.md",
+        "ralph/slice4-backend.progress.json"
+      ]
     }
   }
 }
