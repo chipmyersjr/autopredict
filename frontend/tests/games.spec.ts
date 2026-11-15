@@ -146,7 +146,10 @@ test('real seeded backend renders every game and exact stored spreads', async ({
     }
   }
   await expect(page.getByText('Spread unavailable')).toHaveCount(1)
-  await expect(page.getByText('Pick’em', { exact: true })).toHaveCount(2)
+  const zeroLines = games.flatMap(game => game.markets
+    .filter(market => market.type === 'spread' && market.status === 'active')
+    .flatMap(market => market.selections.filter(selection => selection.is_active && selection.line === '0.00')))
+  await expect(page.getByText('Pick’em', { exact: true })).toHaveCount(zeroLines.length)
   expect(errors).toEqual([])
   await page.screenshot({ path: 'test-results/games-live.png', fullPage: true })
 })
