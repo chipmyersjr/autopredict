@@ -44,13 +44,13 @@ Dashboard shows simulation counts, summed independent simulation bankrolls, comm
   - Validation: TypeScript/production build and intercepted browser contracts for methods, success/no-op/pending, 404/409/422/503, timeout, abort and signed/zero/null ROI formatting.
   - Completion notes: Implemented shared settlement/accounting types, bodyless settlement POST, dashboard GET, bounded errors, abort/timeout handling, exact ROI formatting, and intercepted browser contract tests. Whitespace check passed. Build/browser verification awaits the runner because Node/npm are unavailable and Docker access is denied. No protected files or Git state edited. Independent checks: Whitespace passed; Start sandbox database passed; Build current backend and fixture dependencies passed; Build isolated browser check image passed; Frontend build and controlled browser regressions passed. Files: frontend/src/api/dashboard.ts, frontend/src/api/results.ts, frontend/src/api/runs.ts, frontend/src/format.ts, frontend/tests/results-api.spec.ts, progress/1_4_mvp_vertical_slice_4/front_end/plan.md, ralph/slice4-frontend.progress.json. Logs: .git/ralph/244f409f1f7ebb13/FE-01-001.*. Provider keys remain blank. Controlled browser checks run for FE-01–FE-03; FE-04 additionally requires the real API and disposable PostgreSQL browser flow. Live-provider integration is separate.
 
-- [ ] FE-02 — Add Run settlement and partial/final accounting views
-  - Status: not_started
+- [x] FE-02 — Add Run settlement and partial/final accounting views
+  - Status: complete
   - Scope: Extend Run detail and history with settlement action, returned outcome/evidence display, counts, realized metrics, final metrics and safe recovery.
   - Dependencies: FE-01; backend BE-02 for live behavior.
   - Acceptance criteria: One submission per action; action recovers after failure; partial/pending/completed/no-op states are distinct; zero is not mistaken for null; updated metrics and Bets come from the same POST response; reload/history preserve results; navigation prevents stale response corruption.
   - Validation: Controlled Playwright tests for all outcomes, known mixed-Run oracle, missing scores, no-op, disabled/double-click behavior, response loss/retry/reload, safe errors, route switch during POST, unchanged snapshots, keyboard focus/status and mobile overflow. Preserve creation/preview/history regression coverage.
-  - Completion notes: Not implemented or validated.
+  - Completion notes: Implemented Run settlement controls, exact partial/final accounting, saved outcome evidence, and safe retry/reload recovery. Added controlled desktop/mobile Playwright coverage. Whitespace check passed; build/browser execution awaits the runner because Node/npm are unavailable and Docker access is denied. No progress files or Git state edited. Independent checks: Whitespace passed; Start sandbox database passed; Build current backend and fixture dependencies passed; Build isolated browser check image passed; Frontend build and controlled browser regressions passed. Files: frontend/src/pages/RunsPage.tsx, frontend/tests/settlement.spec.ts, progress/1_4_mvp_vertical_slice_4/front_end/plan.md, ralph/slice4-frontend.progress.json. Logs: .git/ralph/244f409f1f7ebb13/FE-02-002.*. Provider keys remain blank. Controlled browser checks run for FE-01–FE-03; FE-04 additionally requires the real API and disposable PostgreSQL browser flow. Live-provider integration is separate.
 
 - [ ] FE-03 — Add dashboard results and basic performance visualization
   - Status: not_started
@@ -86,4 +86,11 @@ FE-01 → FE-02/FE-03 → FE-04; coordinate live validation with backend BE-04. 
 - Completed tasks: FE-01.
 - Validation: Whitespace passed; Start sandbox database passed; Build current backend and fixture dependencies passed; Build isolated browser check image passed; Frontend build and controlled browser regressions passed.
 - Completion notes: Implemented shared settlement/accounting types, bodyless settlement POST, dashboard GET, bounded errors, abort/timeout handling, exact ROI formatting, and intercepted browser contract tests. Whitespace check passed. Build/browser verification awaits the runner because Node/npm are unavailable and Docker access is denied. No protected files or Git state edited.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
+
+### 2026-11-15 00:37 UTC — FE-02 Ralph execution
+
+- Completed tasks: FE-02.
+- Validation: Whitespace passed; Start sandbox database passed; Build current backend and fixture dependencies passed; Build isolated browser check image passed; Frontend build and controlled browser regressions passed.
+- Completion notes: Implemented Run settlement controls, exact partial/final accounting, saved outcome evidence, and safe retry/reload recovery. Added controlled desktop/mobile Playwright coverage. Whitespace check passed; build/browser execution awaits the runner because Node/npm are unavailable and Docker access is denied. No progress files or Git state edited.
 - Next: Continue the configured task sequence; live-provider verification remains separately reported.

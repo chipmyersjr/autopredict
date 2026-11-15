@@ -26,7 +26,21 @@
     },
     "FE-02": {
       "title": "Add Run settlement and partial/final accounting views",
-      "status": "not_started"
+      "status": "complete",
+      "summary": "Implemented Run settlement controls, exact partial/final accounting, saved outcome evidence, and safe retry/reload recovery. Added controlled desktop/mobile Playwright coverage. Whitespace check passed; build/browser execution awaits the runner because Node/npm are unavailable and Docker access is denied. No progress files or Git state edited.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build current backend and fixture dependencies passed",
+        "Build isolated browser check image passed",
+        "Frontend build and controlled browser regressions passed"
+      ],
+      "files": [
+        "frontend/src/pages/RunsPage.tsx",
+        "frontend/tests/settlement.spec.ts",
+        "progress/1_4_mvp_vertical_slice_4/front_end/plan.md",
+        "ralph/slice4-frontend.progress.json"
+      ]
     },
     "FE-03": {
       "title": "Add dashboard results and basic performance visualization",
