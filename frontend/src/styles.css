@@ -71,5 +71,12 @@ dd { margin: 4px 0 0; font-weight: 700; font-variant-numeric: tabular-nums; }
 .bet-list li + li { border-top: 1px solid #dce3e8; margin-top: 24px; padding-top: 24px; }
 .bet-list h3 { font-size: 1.1rem; text-transform: none; letter-spacing: normal; color: #172b3a; }
 .record-id { font-size: .8rem; }
+.profit-chart { display: block; width: 100%; height: auto; margin-top: 16px; }
+.profit-chart text { font: 14px system-ui, sans-serif; fill: currentColor; }
+.performance-table { overflow-x: auto; margin-top: 16px; }
+.performance-table:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+.performance-table table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.performance-table caption { text-align: left; margin-bottom: 8px; }
+.performance-table th, .performance-table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #dce3e8; }
 .state-panel { overflow-wrap: anywhere; }
 @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .main-nav { padding-left: 16px; } }

@@ -52,13 +52,13 @@ Dashboard shows simulation counts, summed independent simulation bankrolls, comm
   - Validation: Controlled Playwright tests for all outcomes, known mixed-Run oracle, missing scores, no-op, disabled/double-click behavior, response loss/retry/reload, safe errors, route switch during POST, unchanged snapshots, keyboard focus/status and mobile overflow. Preserve creation/preview/history regression coverage.
   - Completion notes: Implemented Run settlement controls, exact partial/final accounting, saved outcome evidence, and safe retry/reload recovery. Added controlled desktop/mobile Playwright coverage. Whitespace check passed; build/browser execution awaits the runner because Node/npm are unavailable and Docker access is denied. No progress files or Git state edited. Independent checks: Whitespace passed; Start sandbox database passed; Build current backend and fixture dependencies passed; Build isolated browser check image passed; Frontend build and controlled browser regressions passed. Files: frontend/src/pages/RunsPage.tsx, frontend/tests/settlement.spec.ts, progress/1_4_mvp_vertical_slice_4/front_end/plan.md, ralph/slice4-frontend.progress.json. Logs: .git/ralph/244f409f1f7ebb13/FE-02-002.*. Provider keys remain blank. Controlled browser checks run for FE-01–FE-03; FE-04 additionally requires the real API and disposable PostgreSQL browser flow. Live-provider integration is separate.
 
-- [ ] FE-03 — Add dashboard results and basic performance visualization
-  - Status: not_started
+- [x] FE-03 — Add dashboard results and basic performance visualization
+  - Status: complete
   - Scope: Add #/dashboard navigation/page, server aggregate cards, recent-result links and accessible cumulative-profit chart/table.
   - Dependencies: FE-01; backend BE-03 for live behavior. May proceed alongside FE-02.
   - Acceptance criteria: Totals clearly represent independent simulations; realized ROI/profit are accurate; empty/loading/error/retry, negative/zero profit and UTC dates display correctly; recent results open saved Run history; chart is readable by keyboard/screen reader and at mobile width.
   - Validation: Build and browser fixtures for empty/partial/completed/multiple Runs, ratio units, daily cumulative values, single/negative/zero chart states, 10-result list, links/back/forward/reload, accessible equivalent and mobile layout.
-  - Completion notes: Not implemented or validated.
+  - Completion notes: Fixed the dashboard loading-test race caused by Strict Mode request replay, preserving loading/error/retry assertions. Whitespace check passes. Build and browser checks await the runner because Node/npm are unavailable and Docker access is denied. No protected files or Git state changed. Independent checks: Whitespace passed; Start sandbox database passed; Build current backend and fixture dependencies passed; Build isolated browser check image passed; Frontend build and controlled browser regressions passed. Files: frontend/src/App.tsx, frontend/src/pages/DashboardPage.tsx, frontend/src/styles.css, frontend/tests/dashboard.spec.ts, progress/1_4_mvp_vertical_slice_4/front_end/plan.md, ralph/slice4-frontend.progress.json. Logs: .git/ralph/244f409f1f7ebb13/FE-03-004.*. Provider keys remain blank. Controlled browser checks run for FE-01–FE-03; FE-04 additionally requires the real API and disposable PostgreSQL browser flow. Live-provider integration is separate.
 
 - [ ] FE-04 — Prove the complete resolution flow without ingress
   - Status: not_started
@@ -93,4 +93,11 @@ FE-01 → FE-02/FE-03 → FE-04; coordinate live validation with backend BE-04. 
 - Completed tasks: FE-02.
 - Validation: Whitespace passed; Start sandbox database passed; Build current backend and fixture dependencies passed; Build isolated browser check image passed; Frontend build and controlled browser regressions passed.
 - Completion notes: Implemented Run settlement controls, exact partial/final accounting, saved outcome evidence, and safe retry/reload recovery. Added controlled desktop/mobile Playwright coverage. Whitespace check passed; build/browser execution awaits the runner because Node/npm are unavailable and Docker access is denied. No progress files or Git state edited.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
+
+### 2026-11-15 00:43 UTC — FE-03 Ralph execution
+
+- Completed tasks: FE-03.
+- Validation: Whitespace passed; Start sandbox database passed; Build current backend and fixture dependencies passed; Build isolated browser check image passed; Frontend build and controlled browser regressions passed.
+- Completion notes: Fixed the dashboard loading-test race caused by Strict Mode request replay, preserving loading/error/retry assertions. Whitespace check passes. Build and browser checks await the runner because Node/npm are unavailable and Docker access is denied. No protected files or Git state changed.
 - Next: Continue the configured task sequence; live-provider verification remains separately reported.
