@@ -1,8 +1,8 @@
 # Design 1, part 4 — Settlement & P&L frontend
 
-Area status: `not_started`
+Area status: `in_progress`
 
-Planning status: settled implementation plan; planning only.
+Planning status: ready. Current execution status and evidence are recorded in the task checklist and latest loop entries.
 
 ## Objective and governing design
 
@@ -36,13 +36,13 @@ Dashboard shows simulation counts, summed independent simulation bankrolls, comm
 
 ## Tasks
 
-- [ ] FE-01 — Add settlement and dashboard API clients
-  - Status: not_started
+- [x] FE-01 — Add settlement and dashboard API clients
+  - Status: complete
   - Scope: Extend shared Run/Bet types, add typed settlement/dashboard requests, bounded safe errors, abort support and exact ratio formatting.
   - Dependencies: Settled sibling backend contract; BE-02/BE-03 for real integration.
   - Acceptance criteria: POST has no score/outcome/body or creation request key; decimal strings/nulls/evidence are preserved; transport uncertainty and definite API errors have useful messages; ratios render exact percentages.
   - Validation: TypeScript/production build and intercepted browser contracts for methods, success/no-op/pending, 404/409/422/503, timeout, abort and signed/zero/null ROI formatting.
-  - Completion notes: Not implemented or validated.
+  - Completion notes: Implemented shared settlement/accounting types, bodyless settlement POST, dashboard GET, bounded errors, abort/timeout handling, exact ROI formatting, and intercepted browser contract tests. Whitespace check passed. Build/browser verification awaits the runner because Node/npm are unavailable and Docker access is denied. No protected files or Git state edited. Independent checks: Whitespace passed; Start sandbox database passed; Build current backend and fixture dependencies passed; Build isolated browser check image passed; Frontend build and controlled browser regressions passed. Files: frontend/src/api/dashboard.ts, frontend/src/api/results.ts, frontend/src/api/runs.ts, frontend/src/format.ts, frontend/tests/results-api.spec.ts, progress/1_4_mvp_vertical_slice_4/front_end/plan.md, ralph/slice4-frontend.progress.json. Logs: .git/ralph/244f409f1f7ebb13/FE-01-001.*. Provider keys remain blank. Controlled browser checks run for FE-01–FE-03; FE-04 additionally requires the real API and disposable PostgreSQL browser flow. Live-provider integration is separate.
 
 - [ ] FE-02 — Add Run settlement and partial/final accounting views
   - Status: not_started
@@ -80,3 +80,10 @@ FE-01 → FE-02/FE-03 → FE-04; coordinate live validation with backend BE-04. 
 - Validation: Reviewed governing designs, existing slice 3 plans and Run UI/API/error/retry patterns, and current disposable live backend helper. Checked sibling endpoints, accounting units, evidence, fixture scope, dependencies and required task fields. No application changes or runtime tests for this planning-only request.
 - Blockers: None for the local-data slice. Actual provider final-score ingestion remains separately unimplemented; correction/regrading needs subsequent design authority.
 - Next steps: FE-01 when implementation is requested, FE-02/FE-03 after client types, then FE-04 against the implemented backend. Existing plans and design documents remain unchanged.
+
+### 2026-11-15 00:33 UTC — FE-01 Ralph execution
+
+- Completed tasks: FE-01.
+- Validation: Whitespace passed; Start sandbox database passed; Build current backend and fixture dependencies passed; Build isolated browser check image passed; Frontend build and controlled browser regressions passed.
+- Completion notes: Implemented shared settlement/accounting types, bodyless settlement POST, dashboard GET, bounded errors, abort/timeout handling, exact ROI formatting, and intercepted browser contract tests. Whitespace check passed. Build/browser verification awaits the runner because Node/npm are unavailable and Docker access is denied. No protected files or Git state edited.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.

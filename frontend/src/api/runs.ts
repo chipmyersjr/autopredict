@@ -1,4 +1,5 @@
 import type { Decision, Preview } from './strategies'
+import { readResults } from './results'
 export type SkippedGame = Preview['skipped_games'][number]
 export interface RunCreate {
   strategy_id: string; game_ids: string[]; starting_bankroll: string; stake_per_bet: string
@@ -10,13 +11,24 @@ export interface Run {
   end_time: string | null; final_bankroll: string | null; total_profit: string | null; roi: string | null
   created_at: string; updated_at: string; game_ids: string[]; bet_count: number
   committed_stake: string; available_bankroll: string; skipped_games: SkippedGame[]
+  current_bankroll: string; settled_stake: string
+  open_bet_count: number; settled_bet_count: number
+  win_count: number; loss_count: number; push_count: number; void_count: number
 }
 export interface Bet extends Decision {
   id: string; run_id: string; home_team: string; away_team: string; kickoff_at_placement: string
   stake: string; status: string; result: string | null; profit: string | null
   placed_at: string; settled_at: string | null; created_at: string; updated_at: string
+  settlement_home_score: number | null; settlement_away_score: number | null
+  settlement_game_status: string | null
 }
 export interface RunResult { run: Run; bets: Bet[]; skipped_games: SkippedGame[] }
+export interface SettlementResult {
+  run: Run; bets: Bet[]; settled_bet_ids: string[]
+  pending_games: { game_id: string; reason: 'game_not_final' | 'final_scores_missing' }[]
+}
+export const settleRun = (id: string, signal: AbortSignal) =>
+  readResults<SettlementResult>(`/runs/${encodeURIComponent(id)}/settle`, signal, 'settlement')
 export class RunApiError extends Error {
   constructor(message: string, public status: number) { super(message) }
   get definite() { return [404, 409, 422, 503].includes(this.status) }
