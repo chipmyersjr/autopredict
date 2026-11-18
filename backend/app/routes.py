@@ -4,6 +4,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Body
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -21,10 +22,20 @@ from fastapi import Header, Response
 from app.models import Run, Bet
 from app.schemas import RunCreate, RunResponse, RunCreationResponse, BetResponse
 from app.runs import create_run, read_run, run_response, ordered_bets, bet_response, local_user, RUN_GRAPH
+from app.runs import settle_run
+from app.schemas import SettlementResponse
+from app.schemas import DashboardResponse
+from app.dashboard import read_dashboard
 
 router = APIRouter(prefix="/api", responses={503: {"description": "Database unavailable"}})
 DatabaseSession = Annotated[Session, Depends(get_session)]
 GAME_GRAPH = selectinload(Game.markets).selectinload(Market.selections)
+
+
+@router.get("/dashboard", response_model=DashboardResponse, tags=["Dashboard"])
+def dashboard(session: DatabaseSession):
+    """Totals across independent simulations; never refresh or settle results."""
+    return read_dashboard(session)
 
 
 def find_game(session: Session, game_id: UUID) -> Game:
@@ -161,6 +172,17 @@ def runs_list(session: DatabaseSession):
     owner = local_user(session)
     runs = session.scalars(select(Run).where(Run.user_id == owner).options(*RUN_GRAPH).order_by(Run.start_time.desc(), Run.id)).all()
     return [run_response(run) for run in runs]
+
+
+@router.post("/runs/{run_id}/settle", response_model=SettlementResponse, tags=["Runs"],
+             responses={404: {"description": "Run not found"},
+                        409: {"description": "Invalid snapshot or accounting overflow"},
+                        422: {"description": "Invalid input"}})
+async def run_settle(run_id: UUID, request: Request, session: DatabaseSession):
+    """Explicitly settle saved results; no request body or provider refresh."""
+    if await request.body():
+        raise HTTPException(422, "Settlement accepts no body")
+    return await run_in_threadpool(settle_run, session, run_id)
 
 
 @router.get("/runs/{run_id}", response_model=RunResponse, tags=["Runs"])

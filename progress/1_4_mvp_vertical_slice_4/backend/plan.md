@@ -1,8 +1,8 @@
 # Design 1, part 4 — Settlement & P&L backend
 
-Area status: `not_started`
+Area status: `complete`
 
-Planning status: settled implementation plan; planning only, no implementation authorized by this request.
+Planning status: ready. Current execution status and evidence are recorded in the task checklist and latest loop entries.
 
 ## Objective and governing design
 
@@ -54,37 +54,37 @@ Independent mixed-Run oracle: bankroll 100.00, four stakes of 10.00; one win at 
 
 ## Tasks
 
-- [ ] BE-01 — Add settlement evidence and pure spread accounting
-  - Status: not_started
+- [x] BE-01 — Add settlement evidence and pure spread accounting
+  - Status: complete
   - Scope: Add additive evidence migration/constraints and a pure Decimal resolver using the contract above.
   - Dependencies: Completed slice 3 schema.
   - Acceptance criteria: Deterministic home/away win/loss/push/void resolution from saved execution fields; incomplete games stay pending; rounding and evidence consistency hold; malformed snapshots/overflow cannot persist.
   - Validation: Table-driven known-result unit tests, half-cent boundaries, zero/negative spreads, null scores, cancellation, changed quote/team labels; disposable PostgreSQL upgrade/downgrade/re-upgrade and Alembic drift/constraint checks.
-  - Completion notes: Not implemented or validated.
+  - Completion notes: Implemented additive settlement evidence migration/constraints, pure Decimal spread resolution, and unit/PostgreSQL tests. Focused checks: 38 passed; whitespace passed. PostgreSQL checks await runner verification because Docker access is denied; broader local suite was interrupted. No plan, design, runner, or Git-state edits. FE-04 browser evidence remains pending. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: backend/app/models.py, backend/app/settlement.py, backend/tests/test_ingress_persistence.py, backend/tests/test_settlement.py, backend/tests/test_settlement_persistence.py, migrations/versions/0005_add_settlement_evidence.py, progress/1_4_mvp_vertical_slice_4/backend/plan.md, ralph/slice4-backend.progress.json. Logs: .git/ralph/64d424df51d8dd0a/BE-01-001.*. Backend verification only; full-epic live browser acceptance is performed later by frontend FE-04. No live-provider verification is implied.
 
-- [ ] BE-02 — Implement atomic per-Run settlement and extended history
-  - Status: not_started
+- [x] BE-02 — Implement atomic per-Run settlement and extended history
+  - Status: complete
   - Scope: Add settlement service, POST route, evidence responses, accurate partial/final Run metrics and extended existing serializers.
   - Dependencies: BE-01.
   - Acceptance criteria: Owned stored results settle once; partial/no-op/retry behavior matches contract; completed timestamps remain stable; snapshots/creation identity remain immutable; transactional rollback prevents partial credit.
   - Validation: PostgreSQL API tests for mixed oracle, all-pending/missing scores/canceled/skipped games, independent Runs on one game, concurrent same-Run POSTs, score-writer locking, injected failure rollback, overflow, lost response/restart retry, ownership, 404/409/422/503, OpenAPI and creation replay after settlement. Prove GET calls issue no writes.
-  - Completion notes: Not implemented or validated.
+  - Completion notes: Implemented atomic settlement, extended Run/Bet history, and PostgreSQL regression tests covering accounting, retries, concurrency, locking, and rollback. Syntax and whitespace checks passed. Docker access denied locally; runner verification required. FE-04 browser evidence remains pending. No protected files or Git state changed. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: backend/app/routes.py, backend/app/runs.py, backend/app/schemas.py, backend/tests/test_run_settlement.py, progress/1_4_mvp_vertical_slice_4/backend/plan.md, ralph/slice4-backend.progress.json. Logs: .git/ralph/64d424df51d8dd0a/BE-02-002.*. Backend verification only; full-epic live browser acceptance is performed later by frontend FE-04. No live-provider verification is implied.
 
-- [ ] BE-03 — Add persisted dashboard aggregates
-  - Status: not_started
+- [x] BE-03 — Add persisted dashboard aggregates
+  - Status: complete
   - Scope: Implement GET /api/dashboard with consistent local-user totals, recent results and UTC daily cumulative performance.
   - Dependencies: BE-02.
   - Acceptance criteria: Empty/partial/completed histories yield exact documented totals; unrelated User data is excluded; no provider calls or current-week filtering; aggregate ROI uses total starting bankroll rather than an average of Run ROIs.
   - Validation: PostgreSQL known-total fixtures for multiple independent Runs, zero profit, no Runs, UTC date boundaries, tie ordering/10-result limit, ownership, snapshot consistency and bounded query count.
-  - Completion notes: Not implemented or validated.
+  - Completion notes: Implemented snapshot-consistent dashboard totals, recent results, and UTC cumulative performance with PostgreSQL coverage. Whitespace and Python syntax checks passed. Runtime tests await runner verification: Docker access is denied and local Python dependencies are unavailable. No plan, progress, or Git state edits performed. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: backend/app/dashboard.py, backend/app/routes.py, backend/app/schemas.py, backend/tests/test_dashboard.py, progress/1_4_mvp_vertical_slice_4/backend/plan.md, ralph/slice4-backend.progress.json. Logs: .git/ralph/64d424df51d8dd0a/BE-03-003.*. Backend verification only; full-epic live browser acceptance is performed later by frontend FE-04. No live-provider verification is implied.
 
-- [ ] BE-04 — Validate and document the full resolution handoff
-  - Status: not_started
+- [x] BE-04 — Validate and document the full resolution handoff
+  - Status: complete
   - Scope: Extend guarded disposable browser fixture support for final scores; document accounting, settlement requests/retries, fixture use and provider limitations in README.
   - Dependencies: BE-01–BE-03; full epic acceptance also requires frontend FE-04.
   - Acceptance criteria: Real API create → fixture finalization → settle → read/reload produces independently verified P&L without live ingress; no development mutations or generated artifacts remain; frontend has reproducible evidence.
   - Validation: Required backend regression suite with RUN_POSTGRES_TESTS=1, migration drift, actual HTTP smoke plus frontend FE-04 evidence; inspect fixture guard and cleanup. Provider final-confirmation integration is conditional and explicitly unperformed while ingress is absent.
-  - Completion notes: Not implemented or validated.
+  - Completion notes: Added guarded settlement fixtures, deterministic real HTTP acceptance tests, and concise README handoff documentation. Focused checks: 41 passed, 1 skipped; whitespace clean. Docker access denied locally, so PostgreSQL verification awaits the runner. FE-04 browser evidence remains pending. No Git or progress edits performed. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: README.md, backend/tests/test_resolution_handoff.py, frontend/tests/support/live_backend.py, progress/1_4_mvp_vertical_slice_4/backend/plan.md, ralph/slice4-backend.progress.json. Logs: .git/ralph/64d424df51d8dd0a/BE-04-007.*. Backend verification only; full-epic live browser acceptance is performed later by frontend FE-04. No live-provider verification is implied.
 
 ## Epic acceptance and execution order
 
@@ -98,3 +98,31 @@ BE-01 → BE-02 → BE-03 → BE-04. Frontend FE-01 may begin from this settled 
 - Validation: Read repository instructions, governing design documents and ERD, prior slice plans, current models/schemas/routes/Run accounting, frontend history/client and disposable database/browser fixtures. Checked sibling contract/dependencies and plan format/links; no runtime tests executed for this documentation-only change.
 - Blockers: None for local-data implementation. Provider ingress/results integration is absent and must be recorded separately. Settled score correction/regrading remains outside this slice under design 3 section 6.
 - Next steps: BE-01 when implementation is requested; then BE-02 and frontend FE-01. Existing plans, design files and application code remain unchanged.
+
+### 2026-11-14 23:42 UTC — BE-01 Ralph execution
+
+- Completed tasks: BE-01.
+- Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
+- Completion notes: Implemented additive settlement evidence migration/constraints, pure Decimal spread resolution, and unit/PostgreSQL tests. Focused checks: 38 passed; whitespace passed. PostgreSQL checks await runner verification because Docker access is denied; broader local suite was interrupted. No plan, design, runner, or Git-state edits. FE-04 browser evidence remains pending.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
+
+### 2026-11-14 23:45 UTC — BE-02 Ralph execution
+
+- Completed tasks: BE-02.
+- Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
+- Completion notes: Implemented atomic settlement, extended Run/Bet history, and PostgreSQL regression tests covering accounting, retries, concurrency, locking, and rollback. Syntax and whitespace checks passed. Docker access denied locally; runner verification required. FE-04 browser evidence remains pending. No protected files or Git state changed.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
+
+### 2026-11-14 23:48 UTC — BE-03 Ralph execution
+
+- Completed tasks: BE-03.
+- Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
+- Completion notes: Implemented snapshot-consistent dashboard totals, recent results, and UTC cumulative performance with PostgreSQL coverage. Whitespace and Python syntax checks passed. Runtime tests await runner verification: Docker access is denied and local Python dependencies are unavailable. No plan, progress, or Git state edits performed.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
+
+### 2026-11-15 00:30 UTC — BE-04 Ralph execution
+
+- Completed tasks: BE-04.
+- Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
+- Completion notes: Added guarded settlement fixtures, deterministic real HTTP acceptance tests, and concise README handoff documentation. Focused checks: 41 passed, 1 skipped; whitespace clean. Docker access denied locally, so PostgreSQL verification awaits the runner. FE-04 browser evidence remains pending. No Git or progress edits performed.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.

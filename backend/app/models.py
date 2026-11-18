@@ -142,6 +142,20 @@ class Bet(Timestamps, Base):
         CheckConstraint("stake > 0 AND price > 1", name="ck_bets_money"),
         CheckConstraint("status IN ('open', 'won', 'lost', 'pushed', 'void')", name="ck_bets_status"),
         CheckConstraint("result IN ('won', 'lost', 'pushed', 'void')", name="ck_bets_result"),
+        CheckConstraint(
+            "(status = 'open' AND result IS NULL AND profit IS NULL AND settled_at IS NULL "
+            "AND settlement_game_status IS NULL AND settlement_home_score IS NULL AND settlement_away_score IS NULL) OR "
+            "(status <> 'open' AND result IS NOT NULL AND result = status AND profit IS NOT NULL "
+            "AND profit > '-Infinity'::numeric AND profit < 'Infinity'::numeric AND settled_at IS NOT NULL "
+            "AND settlement_game_status IS NOT NULL AND "
+            "((status = 'void' AND settlement_game_status = 'canceled' AND profit = 0) OR "
+            "(status IN ('won', 'lost', 'pushed') AND settlement_game_status = 'completed' "
+            "AND settlement_home_score IS NOT NULL AND settlement_away_score IS NOT NULL "
+            "AND ((status = 'won' AND profit >= 0) OR (status = 'lost' AND profit = -stake) "
+            "OR (status = 'pushed' AND profit = 0)))))",
+            name="ck_bets_settlement_consistency",
+        ),
+        CheckConstraint("settlement_home_score >= 0 AND settlement_away_score >= 0", name="ck_bets_settlement_scores"),
     )
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     run_id: Mapped[UUID] = mapped_column(ForeignKey("runs.id", ondelete="RESTRICT"), index=True)
@@ -164,6 +178,9 @@ class Bet(Timestamps, Base):
     profit: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     placed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    settlement_home_score: Mapped[int | None] = mapped_column(Integer)
+    settlement_away_score: Mapped[int | None] = mapped_column(Integer)
+    settlement_game_status: Mapped[str | None] = mapped_column(String(50))
 
 
 class WeeklyRefreshBucket(Timestamps, Base):

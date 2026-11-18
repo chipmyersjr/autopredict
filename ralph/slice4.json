@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "configs": [
+    "ralph/slice4-backend.json",
+    "ralph/slice4-frontend.json"
+  ]
+}

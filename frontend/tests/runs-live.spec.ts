@@ -10,7 +10,7 @@ test.describe('isolated PostgreSQL saved-run flow', () => {
   for (const width of [375, 1280]) test(`create, lose response, recover, mutate quotes and reload at ${width}px`, async ({ page, request }) => {
     test.skip(!process.env.LIVE_RUN_DB_FILE, 'Requires disposable live_backend.py server and metadata file')
     const base = process.env.TEST_API_BASE_URL ?? 'http://127.0.0.1:8017'
-    const games: Game[] = await (await request.get(`${base}/api/games`)).json()
+    const games: Game[] = await (await request.get(`${base}/api/games?window=current`)).json()
     await page.setViewportSize({ width, height: 1000 })
     await page.goto('/')
     const boxes = page.getByRole('checkbox')
@@ -65,7 +65,7 @@ test.describe('isolated PostgreSQL saved-run flow', () => {
     const current: Game[] = await (await request.get(`${base}/api/games`)).json()
     expect(current.filter(g => selected.includes(g.id)).every(g => g.home_team === 'Changed current home')).toBe(true)
     await expect(saved).not.toContainText('Changed current home'); await expect(saved).not.toContainText('3.1234')
-    await expect(page.getByRole('region', { name: 'Run summary' })).toContainText('Not settled')
+    await expect(page.getByRole('region', { name: 'Run summary' })).toContainText('Pending results')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await page.screenshot({ path: `test-results/runs-live-${width}.png`, fullPage: true })
     await page.getByRole('link', { name: 'All Runs' }).click()
@@ -73,5 +73,6 @@ test.describe('isolated PostgreSQL saved-run flow', () => {
     expect(history.filter((r: { id: string }) => r.id === created!.run.id)).toHaveLength(1)
     await page.getByRole('link', { name: `Browser Run ${width}` }).click()
     await expect(saved).toContainText('Saved Bets')
+    execFileSync(resolve('../backend/.venv/bin/python'), [resolve('tests/support/live_backend.py'), '--metadata', process.env.LIVE_RUN_DB_FILE!, '--restore-run', created!.run.id])
   })
 })

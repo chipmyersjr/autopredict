@@ -9,7 +9,7 @@ function formatLine(line: string) {
 for (const width of [375, 1280]) test(`live decision preview at ${width}px`, async ({ page, request }) => {
   test.skip(!process.env.LIVE_API, 'Requires seeded PostgreSQL backend')
   const base = process.env.TEST_API_BASE_URL ?? 'http://127.0.0.1:8003'
-  const games: Game[] = await (await request.get(`${base}/api/games`)).json()
+  const games: Game[] = await (await request.get(`${base}/api/games?window=current`)).json()
   await page.setViewportSize({ width, height: 1000 }); await page.goto('/')
   const boxes = page.getByRole('checkbox')
   await expect(boxes).toHaveCount(games.length)

@@ -30,6 +30,43 @@ To use a private settings file outside the project, run `export ENV_FILE="$HOME/
 - [Frontend home page](http://127.0.0.1:5173/)
 - [Swagger API docs](http://127.0.0.1:8000/docs)
 
+## Settlement handoff
+
+Send `POST /api/runs/{id}/settle` with no body to resolve saved Bets against
+stored completed games with final scores; canceled games void Bets. This never
+refreshes providers. Missing final scores stay pending. Retry after a lost
+response, then reload `GET /api/runs/{id}` and `/api/runs/{id}/bets`: terminal
+outcomes, timestamps and evidence are preserved without regrading. Creation-key
+replays return the same simulation with current outcomes.
+
+Profit uses saved stake/price/line and Decimal rounding once per Bet to cents.
+Current bankroll is starting bankroll plus realized profit; available bankroll
+also subtracts open stakes. ROI is a ratio (not a percentage). Four 10.00 Bets
+on a 100.00 Run, with a win at 1.9500, loss, push and pending Bet, yield profit
+-0.50, current 99.50, available 89.50 and ROI -0.0050. Voiding the pending Bet
+finishes at 99.50. Dashboard bankroll totals sum independent simulations.
+
+For disposable acceptance, start `frontend/tests/support/live_backend.py` with
+`--metadata /tmp/browser.json --port 8017 --origin http://127.0.0.1:5187`
+using the backend Python environment and blank provider keys. It migrates a
+generated `autopredict_browser_*` database, seeds fictional current-week future
+games with zero lines and 1.9500 prices, and removes the database/metadata on
+termination. Create a Run through HTTP first. Then invoke the same helper with
+`--metadata /tmp/browser.json --finalize-run RUN_UUID --results /tmp/results.json`.
+Results are a JSON object keyed by known Run game UUIDs, each containing
+`status` (`completed` or `canceled`), `home_score` and `away_score` (nonnegative
+integers or null, permitting missing-score tests). Inspect saved sides to choose
+win/loss scores; equal scores push these zero lines. `--mutate-run RUN_UUID`
+still changes current labels/quotes and moves games into history for snapshot
+checks. Neither helper writes Bet outcomes or exposes a production score API.
+Remove caller-created results files afterward; never use development records.
+
+`RUN_POSTGRES_TESTS=1` enables the backend regression suite, including a real
+HTTP create/finalize/settle/reload test and fixture cleanup checks. Final browser
+evidence at desktop/mobile sizes remains pending for FE-04. Fictional results
+do not verify actual provider final-confirmation/Refresh integration, which
+remains a separate, unperformed credentialed check.
+
 ## Game ingress handoff
 
 After setup, use `make migrate` for existing databases. Configure server-side

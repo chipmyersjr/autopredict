@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "plan": "progress/1_4_mvp_vertical_slice_4/front_end/plan.md",
+  "area_status": "complete",
+  "tasks": {
+    "FE-01": {
+      "title": "Add settlement and dashboard API clients",
+      "status": "complete",
+      "summary": "Implemented shared settlement/accounting types, bodyless settlement POST, dashboard GET, bounded errors, abort/timeout handling, exact ROI formatting, and intercepted browser contract tests. Whitespace check passed. Build/browser verification awaits the runner because Node/npm are unavailable and Docker access is denied. No protected files or Git state edited.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build current backend and fixture dependencies passed",
+        "Build isolated browser check image passed",
+        "Frontend build and controlled browser regressions passed"
+      ],
+      "files": [
+        "frontend/src/api/dashboard.ts",
+        "frontend/src/api/results.ts",
+        "frontend/src/api/runs.ts",
+        "frontend/src/format.ts",
+        "frontend/tests/results-api.spec.ts",
+        "progress/1_4_mvp_vertical_slice_4/front_end/plan.md",
+        "ralph/slice4-frontend.progress.json"
+      ]
+    },
+    "FE-02": {
+      "title": "Add Run settlement and partial/final accounting views",
+      "status": "complete",
+      "summary": "Implemented Run settlement controls, exact partial/final accounting, saved outcome evidence, and safe retry/reload recovery. Added controlled desktop/mobile Playwright coverage. Whitespace check passed; build/browser execution awaits the runner because Node/npm are unavailable and Docker access is denied. No progress files or Git state edited.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build current backend and fixture dependencies passed",
+        "Build isolated browser check image passed",
+        "Frontend build and controlled browser regressions passed"
+      ],
+      "files": [
+        "frontend/src/pages/RunsPage.tsx",
+        "frontend/tests/settlement.spec.ts",
+        "progress/1_4_mvp_vertical_slice_4/front_end/plan.md",
+        "ralph/slice4-frontend.progress.json"
+      ]
+    },
+    "FE-03": {
+      "title": "Add dashboard results and basic performance visualization",
+      "status": "complete",
+      "summary": "Fixed the dashboard loading-test race caused by Strict Mode request replay, preserving loading/error/retry assertions. Whitespace check passes. Build and browser checks await the runner because Node/npm are unavailable and Docker access is denied. No protected files or Git state changed.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build current backend and fixture dependencies passed",
+        "Build isolated browser check image passed",
+        "Frontend build and controlled browser regressions passed"
+      ],
+      "files": [
+        "frontend/src/App.tsx",
+        "frontend/src/pages/DashboardPage.tsx",
+        "frontend/src/styles.css",
+        "frontend/tests/dashboard.spec.ts",
+        "progress/1_4_mvp_vertical_slice_4/front_end/plan.md",
+        "ralph/slice4-frontend.progress.json"
+      ]
+    },
+    "FE-04": {
+      "title": "Prove the complete resolution flow without ingress",
+      "status": "complete",
+      "summary": "Fixed live acceptance routing so Vite source modules are no longer forwarded to FastAPI. Preserved PostgreSQL settlement scenarios and assertions. Whitespace check passed; build, browser execution, and screenshot inspection await the runner because Node/npm and Docker access are unavailable. No live-provider verification claimed.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build current backend and fixture dependencies passed",
+        "Build isolated browser check image passed",
+        "Build and real-API PostgreSQL browser acceptance passed"
+      ],
+      "files": [
+        "frontend/playwright.config.ts",
+        "frontend/tests/games.spec.ts",
+        "frontend/tests/runs-live.spec.ts",
+        "frontend/tests/settlement-live.spec.ts",
+        "frontend/tests/strategies-live.spec.ts",
+        "frontend/tests/support/live_backend.py",
+        "progress/1_4_mvp_vertical_slice_4/front_end/plan.md",
+        "ralph/slice4-frontend.progress.json"
+      ]
+    }
+  }
+}

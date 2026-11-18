@@ -53,6 +53,24 @@ The loop retains automated tests for quota/concurrency, matching, imports, parti
 
 After the loop, CHIP manually runs the backend and checks `POST /api/games/refresh` without keys. Expected: HTTP 200, `success=false`, `reason=configuration_error`, a useful safe message and full envelope, no accepted refresh attempt or provider calls, and saved data preserved. Then configure keys outside the sandbox and perform real-provider verification separately. The loop records both manual checks as pending, never as passed.
 
+## Slice 4: backend, then frontend
+
+```sh
+make ralph-preview RALPH_CONFIG=ralph/slice4.json
+make ralph RALPH_CONFIG=ralph/slice4.json
+make ralph RALPH_CONFIG=ralph/slice4.json RALPH_ARGS="--resume"
+```
+
+Commit the setup changes before launching inside the sandbox. One command runs all eight tasks: `ralph/slice4.json` lists `ralph/slice4-backend.json` (BE-01–BE-04), then `ralph/slice4-frontend.json` (FE-01–FE-04). A failed/blocked backend task prevents frontend work. Resume skips fully completed phases so an interrupted frontend run can retain its uncommitted work. Each task still uses the ordinary runner's checks, plan/progress mirror, lock and local commit. To select a range within one area, use `make ralph RALPH_CONFIG=ralph/slice4-backend.json` or the frontend config with the usual range arguments; task ranges are rejected for a multi-plan sequence.
+
+Backend checks run migrations and API/accounting regressions in disposable PostgreSQL databases. BE-04 prepares the guarded browser fixture; final cross-area browser evidence is deferred until FE-04. The old plans predate ingress delivery; preserve the implemented ingress rather than repeating its work. Do not claim real-provider verification from fictional fixtures.
+
+Frontend checks build `ralph/browser.Dockerfile` through the test-only `ralph/slice4-checks.compose.yml` overlay. The image combines the existing backend Python environment with Node 24 and Chromium, so neither Python nor Node needs installation on the host. Controlled browser tests run for each frontend task. FE-04 additionally starts the real API using the existing guarded `live_backend.py` helper, enables live desktop/mobile browser tests, and stops the fixture afterward. Its helper owns creation and cleanup of `autopredict_browser_*` databases; the application database is never used for score mutation. Provider keys are blank. Only existing `db` is needed; development frontend/backend containers are not started or stopped. Build caches contain only public dependencies and code.
+
+Both plans and structured trackers remain separate; no combined copy of their requirements is created. These setup commands do not implement settlement or mark its tasks complete. Screenshot/test artifacts stay inside the disposable check container; runner output remains under `.git/ralph/`.
+
+Baseline verification: the image/build and controlled browser suite pass. The live harness starts and cleans up its generated database, but existing pre-ingress live tests fail because their future fixture dates fall outside the current-week Games view and their expected game lists use unfiltered reads. BE-04 must prepare current-window-aware fixtures; FE-04 must update the live tests to the delivered current-window contract and add settlement acceptance. Do not hide these failures by skipping live tests or reverting the Games window behavior.
+
 ## Stop, inspect, resume
 
 The loop has three attempts and a one-hour wall limit per task per launch. Failed checks feed their logs to another fresh Codex session. Exhausted limits, blocked work, unexpected file/Git edits, failed commits, or Ctrl+C stop the loop without discarding changes. Inspect the files, then use `--resume` to grant another bounded attempt allowance.
@@ -64,6 +82,8 @@ These are workflow guardrails, not a security boundary against a malicious agent
 ## Reuse
 
 Copy the run configuration and structured progress file. Set their matching `plan` reference, task IDs/titles/statuses, completed prerequisite IDs, allowed source paths, check commands, and limits. Keep product requirements only in the referenced plan/design. Each check has `name`, `argv` (argument array), optional repository-relative `cwd`, and `timeout`. `{repo}` in an argument expands to the project root; no shell evaluation is performed. Keep environment overrides non-secret.
+
+For multiple plans, add a sequence config with `{"version": 1, "configs": ["ralph/first.json", "ralph/second.json"]}` and select it with the same `RALPH_CONFIG` argument. Paths are repository-relative. No new Make target is needed. Single-plan configurations continue to work through the same commands.
 
 Runner regression tests use temporary Git repositories and fake Codex executables:
 

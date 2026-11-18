@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "plan": "progress/1_4_mvp_vertical_slice_4/backend/plan.md",
+  "area_status": "complete",
+  "tasks": {
+    "BE-01": {
+      "title": "Add settlement evidence and pure spread accounting",
+      "status": "complete",
+      "summary": "Implemented additive settlement evidence migration/constraints, pure Decimal spread resolution, and unit/PostgreSQL tests. Focused checks: 38 passed; whitespace passed. PostgreSQL checks await runner verification because Docker access is denied; broader local suite was interrupted. No plan, design, runner, or Git-state edits. FE-04 browser evidence remains pending.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build backend dependencies passed",
+        "Backend regressions with disposable PostgreSQL databases passed"
+      ],
+      "files": [
+        "backend/app/models.py",
+        "backend/app/settlement.py",
+        "backend/tests/test_ingress_persistence.py",
+        "backend/tests/test_settlement.py",
+        "backend/tests/test_settlement_persistence.py",
+        "migrations/versions/0005_add_settlement_evidence.py",
+        "progress/1_4_mvp_vertical_slice_4/backend/plan.md",
+        "ralph/slice4-backend.progress.json"
+      ]
+    },
+    "BE-02": {
+      "title": "Implement atomic per-Run settlement and extended history",
+      "status": "complete",
+      "summary": "Implemented atomic settlement, extended Run/Bet history, and PostgreSQL regression tests covering accounting, retries, concurrency, locking, and rollback. Syntax and whitespace checks passed. Docker access denied locally; runner verification required. FE-04 browser evidence remains pending. No protected files or Git state changed.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build backend dependencies passed",
+        "Backend regressions with disposable PostgreSQL databases passed"
+      ],
+      "files": [
+        "backend/app/routes.py",
+        "backend/app/runs.py",
+        "backend/app/schemas.py",
+        "backend/tests/test_run_settlement.py",
+        "progress/1_4_mvp_vertical_slice_4/backend/plan.md",
+        "ralph/slice4-backend.progress.json"
+      ]
+    },
+    "BE-03": {
+      "title": "Add persisted dashboard aggregates",
+      "status": "complete",
+      "summary": "Implemented snapshot-consistent dashboard totals, recent results, and UTC cumulative performance with PostgreSQL coverage. Whitespace and Python syntax checks passed. Runtime tests await runner verification: Docker access is denied and local Python dependencies are unavailable. No plan, progress, or Git state edits performed.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build backend dependencies passed",
+        "Backend regressions with disposable PostgreSQL databases passed"
+      ],
+      "files": [
+        "backend/app/dashboard.py",
+        "backend/app/routes.py",
+        "backend/app/schemas.py",
+        "backend/tests/test_dashboard.py",
+        "progress/1_4_mvp_vertical_slice_4/backend/plan.md",
+        "ralph/slice4-backend.progress.json"
+      ]
+    },
+    "BE-04": {
+      "title": "Validate and document the full resolution handoff",
+      "status": "complete",
+      "summary": "Added guarded settlement fixtures, deterministic real HTTP acceptance tests, and concise README handoff documentation. Focused checks: 41 passed, 1 skipped; whitespace clean. Docker access denied locally, so PostgreSQL verification awaits the runner. FE-04 browser evidence remains pending. No Git or progress edits performed.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build backend dependencies passed",
+        "Backend regressions with disposable PostgreSQL databases passed"
+      ],
+      "files": [
+        "README.md",
+        "backend/tests/test_resolution_handoff.py",
+        "frontend/tests/support/live_backend.py",
+        "progress/1_4_mvp_vertical_slice_4/backend/plan.md",
+        "ralph/slice4-backend.progress.json"
+      ]
+    }
+  }
+}
