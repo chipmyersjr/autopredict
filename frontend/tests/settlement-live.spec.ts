@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { finalize, completedRun } from './support/guided'
 import { execFileSync, spawn } from 'node:child_process'
 import { mkdtempSync, writeFileSync, rmSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -24,7 +25,7 @@ for (const width of [375, 1280]) test(`PostgreSQL resolution oracle and recovery
   const base = `http://127.0.0.1:${port}`
   const env = { ...process.env, CFBD_API_KEY: '', ODDS_API_KEY: '', PYTHONDONTWRITEBYTECODE: '1' }
   const origin = new URL(test.info().project.use.baseURL!).origin
-  const child = spawn(python, [helper, '--metadata', metadata, '--port', String(port), '--origin', origin], { env })
+  const child = spawn(python, [helper, '--metadata', metadata, '--port', String(port), '--origin', origin, '--agent-worker'], { env })
   let logs = ''
   child.stdout.on('data', data => { logs += data }); child.stderr.on('data', data => { logs += data })
   try {
@@ -60,14 +61,17 @@ for (const width of [375, 1280]) test(`PostgreSQL resolution oracle and recovery
     expect(await browserGames.json()).toEqual(await gamesResponse.json())
     await expect(page.getByRole('checkbox')).toHaveCount(5)
     for (const box of await page.getByRole('checkbox').all()) if (await box.isEnabled()) {
-      await box.focus(); await page.keyboard.press('Space')
+      await expect(box).toBeChecked()
     }
+    await finalize(page)
     await page.getByLabel('Run name (optional)').fill(`Resolution ${width}`)
     await page.getByLabel('Starting bankroll').fill('100.00')
     await page.getByLabel('Stake per Bet', { exact: false }).fill('10.00')
     const creation = page.waitForResponse(r => r.url().endsWith('/api/runs') && r.request().method() === 'POST')
-    await page.getByRole('button', { name: 'Create Dry Run', exact: true }).click()
-    const created: RunResult = await (await creation).json()
+    await page.getByRole('button', { name: 'Create Run', exact: true }).click()
+    const accepted: RunResult = await (await creation).json()
+    const created = await completedRun(request, base, accepted.run.id)
+    await page.reload()
     expect(created.bets).toHaveLength(4)
     expect(created.run).toMatchObject({ starting_bankroll: '100.00', committed_stake: '40.00', available_bankroll: '60.00', total_profit: null, roi: null, final_bankroll: null })
     expect(created.bets.every(b => b.line === '0.00' && b.price === '1.9500' && b.stake === '10.00' && b.result === null)).toBe(true)
@@ -88,16 +92,16 @@ for (const width of [375, 1280]) test(`PostgreSQL resolution oracle and recovery
     expect(pending.pending_games.map(g => g.reason)).toEqual(Array(4).fill('game_not_final'))
     await expect(summary).toContainText('No new Bets settled.')
     await metric('Realized profit', 'Not settled')
-    const finalize = (values: Record<string, { status: string; home_score: number | null; away_score: number | null }>) => {
+    const finalizeResults = (values: Record<string, { status: string; home_score: number | null; away_score: number | null }>) => {
       writeFileSync(results, JSON.stringify(values))
       execFileSync(python, [helper, '--metadata', metadata, '--finalize-run', created.run.id, '--results', results], { env })
     }
-    const finals: Parameters<typeof finalize>[0] = {}
+    const finals: Parameters<typeof finalizeResults>[0] = {}
     created.bets.slice(0, 3).forEach((bet, index) => {
       const homeWins = index === 0 ? bet.side === bet.home_team : bet.side !== bet.home_team
       finals[bet.game_id] = { status: 'completed', home_score: index === 2 ? 7 : homeWins ? 21 : 14, away_score: index === 2 ? 7 : homeWins ? 14 : 21 }
     })
-    finalize(finals)
+    finalizeResults(finals)
     execFileSync(python, [helper, '--metadata', metadata, '--mutate-run', created.run.id], { env })
     expect(await (await request.get(`${base}${path}/bets`)).json()).toEqual(created.bets)
     let lost: SettlementResult | undefined
@@ -124,11 +128,11 @@ for (const width of [375, 1280]) test(`PostgreSQL resolution oracle and recovery
     for (const [label, value] of [['Realized profit', '-0.50'], ['Realized ROI', '-0.5%'], ['Current bankroll', '99.50'], ['Available bankroll', '89.50'], ['Open committed stake', '10.00']]) await metric(label, value)
     await expect(summary.getByText('Final bankroll', { exact: true })).toHaveCount(0)
     const remaining = created.bets[3].game_id
-    finalize({ [remaining]: { status: 'completed', home_score: null, away_score: null } })
+    finalizeResults({ [remaining]: { status: 'completed', home_score: null, away_score: null } })
     const missing = await settle()
     expect(missing.pending_games).toEqual([{ game_id: remaining, reason: 'final_scores_missing' }])
     await expect(summary).toContainText('Final scores missing')
-    finalize({ [remaining]: { status: 'canceled', home_score: null, away_score: null } })
+    finalizeResults({ [remaining]: { status: 'canceled', home_score: null, away_score: null } })
     const complete = await settle()
     expect(complete.run).toMatchObject({ status: 'completed', final_bankroll: '99.50', available_bankroll: '99.50', committed_stake: '0.00', total_profit: '-0.50', roi: '-0.0050', win_count: 1, loss_count: 1, push_count: 1, void_count: 1, open_bet_count: 0 })
     expect(complete.run.end_time).not.toBeNull()

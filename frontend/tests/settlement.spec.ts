@@ -5,7 +5,7 @@ const nextId = '60000000-0000-4000-8000-000000000002'
 const time = '2026-10-02T18:00:00Z'
 const run = {
   id, user_id: 'user', strategy_id: 'strategy', name: 'Mixed oracle', notes: null,
-  status: 'open', starting_bankroll: '100.00', stake_per_bet: '10.00',
+  status: 'open', execution_status: 'completed', starting_bankroll: '100.00', stake_per_bet: '10.00',
   start_time: time, end_time: null, final_bankroll: null, total_profit: null, roi: null,
   created_at: time, updated_at: time, game_ids: ['win', 'loss', 'push', 'pending'],
   bet_count: 4, committed_stake: '40.00', available_bankroll: '60.00', current_bankroll: '100.00',
@@ -33,6 +33,14 @@ const final = { ...partial, status: 'completed', final_bankroll: '99.50', end_ti
   open_bet_count: 0, settled_bet_count: 4, void_count: 1 }
 const finalBets = resolved.map((bet, i) => i !== 3 ? bet : { ...bet, status: 'void', result: 'void', profit: '0.00', settled_at: time, settlement_game_status: 'canceled' })
 
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/runs/*/execution', r => r.fulfill({ json: {
+    run_id: r.request().url().split('/').at(-2), status: 'completed', total_games: 4,
+    completed_games: 4, predicted_games: 4, skipped_games: 0, retrying_games: 0, queued_games: 0,
+    games: run.game_ids.map(game_id => ({ game_id, state: 'bet_created', attempts: 1, skip_reason: null })), message: null,
+  } }))
+})
+
 for (const width of [375, 1280]) test(`mixed settlement oracle, no-op and persisted history at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 })
   let saved: object = run, savedBets: object[] = bets, calls = 0
@@ -54,6 +62,7 @@ for (const width of [375, 1280]) test(`mixed settlement oracle, no-op and persis
   const savedRegion = page.getByRole('region', { name: 'Saved Bets', exact: true })
   await expect(summary).toContainText('Pending results')
   const settle = page.getByRole('button', { name: 'Settle completed games', exact: true })
+  await expect(settle).toBeEnabled()
   await settle.focus(); await page.keyboard.press('Enter')
   await expect(page.getByRole('button', { name: 'Settling…' })).toBeDisabled()
   await expect(page.getByRole('status')).toContainText('3 newly settled Bets.')
@@ -109,6 +118,7 @@ test('in-flight duplicate actions and late responses cannot corrupt another Run'
   }
   await page.route(`**/api/runs/${id}/settle`, async r => { calls++; await gate; await r.fulfill({ json: { run: final, bets: finalBets, settled_bet_ids: [], pending_games: [] } }).catch(() => {}) })
   await page.goto(`/#/runs/${id}`)
+  await expect(page.getByRole('button', { name: 'Settle completed games' })).toBeEnabled()
   await page.getByRole('button', { name: 'Settle completed games' }).evaluate((button: HTMLButtonElement) => { button.click(); button.click() })
   await expect(page.getByRole('button', { name: 'Settling…' })).toBeDisabled()
   await page.evaluate(value => { location.hash = `/runs/${value}` }, nextId)

@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import Bet
-from test_runs import api, body, post
+from test_runs import api, body, finished_post as post, legacy_execution_fixture
 from test_strategies import NOW
 
 
@@ -17,6 +17,7 @@ def test_evidence_upgrade_cycle_preserves_saved_bets(api, migrated_database):
     client, engine, games = api
     _, config = migrated_database
     saved = post(client, body(games)).json()
+    legacy_execution_fixture(engine)
     command.downgrade(config, "0004")
     assert "settlement_game_status" not in {c["name"] for c in inspect(engine).get_columns("bets")}
     command.upgrade(config, "head")

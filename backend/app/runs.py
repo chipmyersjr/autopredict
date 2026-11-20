@@ -3,7 +3,7 @@ from decimal import Decimal, ROUND_HALF_UP, localcontext
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import null, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.orm.attributes import set_committed_value
@@ -11,7 +11,8 @@ from sqlalchemy.orm.attributes import set_committed_value
 from app.models import Bet, Game, Market, Run, RunGame, Selection, Strategy, User
 from app.schemas import BetDecision, BetResponse, QuoteProvenance, RunCreate, RunCreationResponse, RunResponse, SkippedGame
 from app.seed_user import LOCAL_USER_ID
-from app.strategies import random_decisions, resolve_candidates, utc_now
+from app.strategies import resolve_candidates, utc_now
+from app.schemas import StrategyCreate
 from app.settlement import SettlementError, numeric, resolve_spread
 from app.schemas import SettlementResponse, PendingGame
 
@@ -82,6 +83,8 @@ def settle_run(session: Session, run_id: UUID):
                          .with_for_update().execution_options(populate_existing=True))
     if run is None:
         raise HTTPException(404, "Run not found")
+    if run.execution_status != "completed":
+        raise HTTPException(409, "Run execution has not completed successfully")
     bets = session.scalars(select(Bet).where(Bet.run_id == run_id).order_by(Bet.id)
                           .with_for_update().execution_options(populate_existing=True)).all()
     set_committed_value(run, "bets", bets)
@@ -144,6 +147,7 @@ class DryRunAdapter:
                 side=decision.side, line=decision.line, price=decision.price, stake=stake,
                 home_team=game.home_team, away_team=game.away_team,
                 kickoff_at_placement=game.start_time, placed_at=placed_at, status="open",
+                reasoning=decision.reasoning,
                 observation_id=provenance.observation_id if provenance else None,
                 bookmaker=provenance.bookmaker if provenance else None,
                 source_timestamp=provenance.source_timestamp if provenance else None,
@@ -171,11 +175,12 @@ def create_run(session: Session, body: RunCreate, key: UUID):
     prior = existing_request(session, owner, key, payload)
     if prior is not None:
         return result(prior), False
-    # Claim request identity before sampling. A competing insert waits for commit;
+    # Claim request identity before accepting work. A competing insert waits for commit;
     # rollback and read in a fresh transaction after the unique conflict.
     run = Run(user_id=owner, strategy_id=body.strategy_id, request_id=key, request_payload=payload,
               name=body.name, notes=body.notes, starting_bankroll=Decimal(body.starting_bankroll),
-              stake_per_bet=Decimal(body.stake_per_bet), start_time=utc_now(), status="open")
+              stake_per_bet=Decimal(body.stake_per_bet), start_time=utc_now(), status="open",
+              execution_status="queued", execution_finished_at=null())
     strategy = session.scalar(select(Strategy).where(Strategy.id == body.strategy_id).with_for_update())
     if strategy is None:
         raise HTTPException(404, "Strategy not found")
@@ -185,6 +190,7 @@ def create_run(session: Session, body: RunCreate, key: UUID):
         return result(prior), False
     if not strategy.is_active:
         raise HTTPException(409, "Strategy inactive")
+    StrategyCreate(name=strategy.name, type=strategy.type, config=strategy.config)
     session.add(run)
     try:
         session.flush()
@@ -215,19 +221,12 @@ def create_run(session: Session, body: RunCreate, key: UUID):
         if skip:
             skips[game_id] = skip.reason
     check_budget(sum(bool(g) for g in groups), run.stake_per_bet, run.starting_bankroll)
-    decisions = random_decisions(groups)
-    placed_at = utc_now()
-    retained = []
-    for decision in decisions:
-        _, skip = resolve_candidates(by_id[decision.game_id], placed_at, session)
-        if skip:
-            skips[decision.game_id] = skip.reason
-        else:
-            retained.append(decision)
-    check_budget(len(retained), run.stake_per_bet, run.starting_bankroll)
-    run.start_time = placed_at
-    run.games = [RunGame(game_id=g, position=i, skip_reason=skips.get(g), included_at=placed_at)
+    run.games = [RunGame(game_id=g, position=i, skip_reason=skips.get(g), included_at=now,
+                         state="skipped" if g in skips else "queued")
                  for i, g in enumerate(body.game_ids)]
-    DryRunAdapter().record(run, retained, by_id, run.stake_per_bet, placed_at)
+    session.flush()
+    # Capture the acceptance envelope before releasing work to a fast worker.
+    # Replays read current persisted state; a new acceptance always says queued.
+    response = result(run)
     session.commit()
-    return result(read_run(session, run.id)), True
+    return response, True

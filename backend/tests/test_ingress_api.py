@@ -197,14 +197,16 @@ def test_imported_provenance_snapshots_and_clock_cutoff(migrated_database, monke
             game_id = str(session.scalar(select(Game.id)))
             quote_id = str(session.scalar(select(QuoteObservation.id)))
         with TestClient(app) as client:
-            decisions = client.post(f"/api/strategies/{RANDOM_STRATEGY_ID}/decisions",
-                                    json={"game_ids": [game_id]}).json()
-            assert decisions["decisions"][0]["quote_provenance"]["observation_id"] == quote_id
             response = client.post("/api/runs", headers={"Idempotency-Key": str(uuid4())}, json={
                 "strategy_id": str(RANDOM_STRATEGY_ID), "game_ids": [game_id],
                 "starting_bankroll": "100", "stake_per_bet": "10"})
             assert response.status_code == 201, response.text
-            saved = response.json()["bets"][0]
+            assert response.json()["bets"] == []
+            monkeypatch.setattr("app.run_worker.db_now", lambda session: clock[0])
+            from test_runs import drain
+            drain(engine)
+            saved = client.get('/api/runs/'+response.json()['run']['id']+'/bets').json()[0]
+            assert saved["quote_provenance"]["observation_id"] == quote_id
             assert saved["quote_provenance"]["bookmaker"] == "alpha"
             clock[0] += timedelta(seconds=1)
             importer.apply([event([book("beta", point=-7)])], window)
@@ -219,8 +221,9 @@ def test_imported_provenance_snapshots_and_clock_cutoff(migrated_database, monke
                 data = client.get(path).json()
                 markets = data if isinstance(data, list) else [data]
                 assert all(not s["is_active"] for m in markets for s in m["selections"])
-            assert client.post(f"/api/strategies/{RANDOM_STRATEGY_ID}/decisions",
-                json={"game_ids": [game_id]}).json()["skipped_games"][0]["reason"] == "kickoff_reached"
+            assert client.post("/api/runs", headers={"Idempotency-Key": str(uuid4())}, json={
+                "strategy_id": str(RANDOM_STRATEGY_ID), "game_ids": [game_id],
+                "starting_bankroll": "100", "stake_per_bet": "10"}).status_code == 409
         with Session(engine) as session:
             assert all(s.is_active for s in session.scalars(select(Selection)))
 

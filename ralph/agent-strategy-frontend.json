@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "plan": "progress/6_1_agent_strategy/front_end/plan.md",
+  "progress_file": "ralph/agent-strategy-frontend.progress.json",
+  "context": ["design/1_mvp.html", "design/3_game_info_ingress.html", "design/4_shared_strategies.html", "design/6_agent_strategy.html", "progress/6_1_agent_strategy/backend/plan.md"],
+  "allowed_paths": ["frontend/src/*", "frontend/tests/*", "frontend/package.json", "frontend/package-lock.json", "frontend/playwright.config.ts", "frontend/tsconfig.json", "frontend/vite.config.ts", "frontend/index.html"],
+  "protected_paths": ["backend/Dockerfile", "frontend/Dockerfile", "docker-compose.yml", "Makefile", ".dockerignore"],
+  "environment": {"CFBD_API_KEY": "", "ODDS_API_KEY": "", "OLLAMA_API_KEY": "", "OLLAMA_HOST": "http://127.0.0.1:9", "OLLAMA_MODEL": "ralph-test-model", "ENV_FILE": ".env"},
+  "max_attempts": 3,
+  "task_timeout": 3600,
+  "instructions": "Implement only the selected Agent Strategy frontend task using design 6 and the completed sibling backend contract/code. No backend, migration, design, progress, runner/configuration or Git edits. Replace preview/automatic strategy choice with the specified guided Strategy/Games/Finalize workflow, preserving Games Refresh, current-week odds, saved team-name side labels, Pacific kickoff/final scores, creation-key recovery, exact money, history and settlement. Use persisted server progress, not simulated timers. Keep financial and execution status separate. No API keys, profile editor, model controls, direct model/search requests, eval system, comparison dashboard or new results page. Adapt affected old preview/synchronous-creation tests to the new contract without skipping required regressions. FE-05 must implement and run actual API/worker/PostgreSQL desktop/mobile acceptance, including controlled Agent research, disconnect/reopen, replay, retry/quote changes, reasoning, partial/all-failed outcomes, restart fencing and settlement. The existing browser image includes Node/Chromium and Python backend dependencies. Its --live --backend-arg=--agent-worker check starts frontend/tests/support/live_backend.py with the opt-in worker fixture prepared by BE-07, generated database metadata and standard LIVE_API/LIVE_RUN_DB_FILE/TEST_API_BASE_URL variables. Ensure new Agent live acceptance tests are enabled by that invocation and do not silently skip. No real Ollama/DuckDuckGo calls are needed; actual service smoke remains separate. The runner records progress and commits each verified task.",
+  "completion_note": "Automated browser checks use controlled data. FE-05 additionally requires real API/worker execution in a generated disposable PostgreSQL database with fake model/search responses. Actual Ollama/DuckDuckGo behavior is not established by these checks.",
+  "checks": [
+    {"name": "Whitespace", "argv": ["git", "diff", "--check"], "timeout": 15},
+    {"name": "Start sandbox database", "argv": ["make", "db"], "timeout": 120},
+    {"name": "Build current backend and fixture dependencies", "argv": ["docker", "compose", "build", "backend"], "timeout": 600},
+    {"name": "Build shared isolated browser image", "argv": ["docker", "compose", "-f", "docker-compose.yml", "-f", "ralph/slice4-checks.compose.yml", "build", "ralph-browser"], "timeout": 900}
+  ],
+  "tasks": [
+    {"id": "FE-01", "dependencies": [], "checks": [{"name": "Frontend build and controlled browser regressions", "argv": ["docker", "compose", "-f", "docker-compose.yml", "-f", "ralph/slice4-checks.compose.yml", "run", "--rm", "--no-deps", "--env", "OLLAMA_API_KEY=", "--env", "OLLAMA_HOST=http://127.0.0.1:9", "ralph-browser"], "timeout": 600}]},
+    {"id": "FE-02", "dependencies": ["FE-01"], "checks": [{"name": "Frontend build and controlled browser regressions", "argv": ["docker", "compose", "-f", "docker-compose.yml", "-f", "ralph/slice4-checks.compose.yml", "run", "--rm", "--no-deps", "--env", "OLLAMA_API_KEY=", "--env", "OLLAMA_HOST=http://127.0.0.1:9", "ralph-browser"], "timeout": 600}]},
+    {"id": "FE-03", "dependencies": ["FE-01", "FE-02"], "checks": [{"name": "Frontend build and controlled browser regressions", "argv": ["docker", "compose", "-f", "docker-compose.yml", "-f", "ralph/slice4-checks.compose.yml", "run", "--rm", "--no-deps", "--env", "OLLAMA_API_KEY=", "--env", "OLLAMA_HOST=http://127.0.0.1:9", "ralph-browser"], "timeout": 600}]},
+    {"id": "FE-04", "dependencies": ["FE-01", "FE-03"], "checks": [{"name": "Frontend build and controlled browser regressions", "argv": ["docker", "compose", "-f", "docker-compose.yml", "-f", "ralph/slice4-checks.compose.yml", "run", "--rm", "--no-deps", "--env", "OLLAMA_API_KEY=", "--env", "OLLAMA_HOST=http://127.0.0.1:9", "ralph-browser"], "timeout": 600}]},
+    {"id": "FE-05", "dependencies": ["FE-01", "FE-02", "FE-03", "FE-04"], "checks": [{"name": "Frontend build and real API/worker PostgreSQL browser acceptance", "argv": ["docker", "compose", "-f", "docker-compose.yml", "-f", "ralph/slice4-checks.compose.yml", "run", "--rm", "--no-deps", "--env", "OLLAMA_API_KEY=", "--env", "OLLAMA_HOST=http://127.0.0.1:9", "ralph-browser", "python", "/checks/browser_check.py", "--live", "--backend-arg=--agent-worker"], "timeout": 900}]}
+  ]
+}

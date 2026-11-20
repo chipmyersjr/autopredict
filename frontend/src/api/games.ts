@@ -2,6 +2,7 @@ interface Timestamps { created_at: string; updated_at: string }
 export interface Selection extends Timestamps {
   id: string; market_id: string; side: string; line: string | null
   price: string; is_active: boolean; notes: string | null
+  quote_provenance?: { observation_id: string; bookmaker: string; source_timestamp: string | null; fetched_at: string } | null
 }
 export interface Market extends Timestamps {
   id: string; game_id: string; type: string; status: string

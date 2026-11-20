@@ -11,7 +11,7 @@ help:
 	@echo 'make up     Alias for build'
 	@echo 'make dev    Start previously built app containers without migrations/seeds'
 	@echo 'make down   Stop all containers; preserve database data'
-	@echo 'make logs   Follow backend, frontend, and database logs (Ctrl+C exits logs)'
+	@echo 'make logs   Follow app, worker, and database logs (Ctrl+C exits logs)'
 	@echo 'make status Show container health'
 	@echo 'Set ENV_FILE to use settings stored outside the project'
 	@echo 'make ralph-preview  Show the configured task loop without running it'
@@ -20,10 +20,10 @@ help:
 build:
 	$(MAKE) setup
 	$(COMPOSE) build backend frontend
-	$(COMPOSE) stop backend frontend
+	$(COMPOSE) stop backend frontend worker
 	$(MAKE) db
 	$(COMPOSE) run --rm --no-deps init
-	$(COMPOSE) up -d --wait --wait-timeout 120 backend frontend
+	$(COMPOSE) up -d --wait --wait-timeout 120 backend frontend worker
 	@echo 'Frontend: http://127.0.0.1:5173 | API docs: http://127.0.0.1:8000/docs'
 	@echo 'Running in the background. Use make logs or make down.'
 
@@ -47,13 +47,13 @@ seed: db
 	$(COMPOSE) run --rm --no-deps init /bin/sh -ec 'python -m app.seed && python -m app.seed_strategy && python -m app.seed_user'
 
 dev: setup
-	$(COMPOSE) up -d --wait --wait-timeout 120 backend frontend
+	$(COMPOSE) up -d --wait --wait-timeout 120 backend frontend worker
 
 down:
-	$(COMPOSE) stop frontend backend db
+	$(COMPOSE) stop frontend backend worker db
 
 logs:
-	$(COMPOSE) logs -f backend frontend db
+	$(COMPOSE) logs -f backend frontend worker db
 
 status:
 	$(COMPOSE) ps

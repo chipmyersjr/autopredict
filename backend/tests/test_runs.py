@@ -6,7 +6,7 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
-from sqlalchemy import select, func, delete
+from sqlalchemy import select, func, delete, text
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 from app.main import app
@@ -15,7 +15,9 @@ from app.schemas import RunCreate
 from app.seed import demo_games, seed_demo
 from app.seed_strategy import seed_strategy, RANDOM_STRATEGY_ID
 from app.seed_user import seed_user, LOCAL_USER_ID
-from app.strategies import random_decisions
+import asyncio
+from app.predictors import RandomPredictor
+from app.run_worker import claim_next, process_claim
 from test_strategies import NOW, Pick
 
 @pytest.fixture
@@ -27,14 +29,37 @@ def api(migrated_database, monkeypatch):
     seed_demo(engine, games)
     monkeypatch.setattr('app.main.create_database_engine', lambda settings: engine)
     monkeypatch.setattr('app.runs.utc_now', lambda: NOW)
-    monkeypatch.setattr('app.runs.random_decisions', lambda groups: random_decisions(groups, Pick(0)))
-    with TestClient(app) as client: yield client, engine, games
+    monkeypatch.setattr('app.run_worker.db_now', lambda session: NOW)
+    with TestClient(app) as client:
+        client.test_engine = engine
+        yield client, engine, games
 
 def body(games):
     return dict(strategy_id=str(RANDOM_STRATEGY_ID), game_ids=[str(g.id) for g in games], starting_bankroll='40.00', stake_per_bet='10.00')
 
 def post(client, payload, key=None):
     return client.post('/api/runs', json=payload, headers={'Idempotency-Key':str(key or uuid4())})
+
+
+def drain(engine):
+    while (claim := claim_next(engine)) is not None:
+        asyncio.run(process_claim(engine, claim, lambda *_: RandomPredictor(Pick(0))))
+
+
+def finished_post(client, payload, key=None):
+    key = key or uuid4()
+    response = post(client, payload, key)
+    if response.status_code in (200, 201):
+        drain(client.test_engine)
+        return post(client, payload, key)
+    return response
+
+
+def legacy_execution_fixture(engine):
+    """Represent pre-worker records for historical migration-cycle tests only."""
+    with engine.begin() as connection:
+        connection.execute(text('UPDATE runs SET execution_generation=0'))
+        connection.execute(text('UPDATE run_games SET attempts=0, prediction_input=NULL, validated_prediction=NULL'))
 
 @pytest.mark.parametrize('value',['NaN','Infinity','0','-1','1.001','10000000000.00',10,'1e2',True])
 def test_money(value):
@@ -45,7 +70,13 @@ def test_create_reload_replay_snapshot(api):
     key=uuid4(); payload=body(list(reversed(games)))
     response=post(client,payload,key)
     assert response.status_code == 201, response.text
-    saved=response.json(); run=saved['run']
+    accepted=response.json()
+    assert accepted['run']['execution_status']=='queued' and accepted['bets']==[]
+    assert post(client,payload,key).json()==accepted
+    assert client.post('/api/runs/'+accepted['run']['id']+'/settle').status_code==409
+    drain(engine)
+    saved=post(client,payload,key).json(); run=saved['run']
+    assert run['execution_status']=='completed'
     assert run['game_ids']==payload['game_ids'] and run['bet_count']==4
     assert run['committed_stake']=='40.00' and run['available_bankroll']=='0.00'
     assert run['final_bankroll'] is run['total_profit'] is run['roi'] is run['end_time'] is None
@@ -71,7 +102,7 @@ def test_create_reload_replay_snapshot(api):
 
 def test_atomic_failures(api,monkeypatch):
     client,engine,games=api
-    generator=MagicMock(); monkeypatch.setattr('app.runs.random_decisions',generator)
+    generator=MagicMock(); monkeypatch.setattr('app.predictors.RandomPredictor.predict',generator)
     assert post(client,{**body(games),'starting_bankroll':'39.99'}).status_code==422
     assert post(client,body([games[-1]])).status_code==409
     assert post(client,{**body(games),'game_ids':[str(games[0].id),str(uuid4())]}).status_code==404
@@ -92,17 +123,16 @@ def test_atomic_failures(api,monkeypatch):
 
 def test_cutoff_and_adapter_rollback(api,monkeypatch):
     client,engine,games=api
-    times=iter([NOW,NOW,NOW+timedelta(days=1)])
-    monkeypatch.setattr('app.runs.utc_now',lambda:next(times))
-    assert post(client,body(games)).status_code==409
-    monkeypatch.setattr('app.runs.utc_now',lambda:NOW)
+    response=post(client,body(games))
+    key=uuid4()
+    accepted=post(client,body(games),key).json()
     def fail(*args): raise OperationalError(None,None,Exception('secret'))
     monkeypatch.setattr('app.runs.DryRunAdapter.record',fail)
-    response=post(client,body(games))
-    assert response.status_code==503 and response.json()=={'detail':'Database unavailable'}
+    with pytest.raises(OperationalError): drain(engine)
     with Session(engine) as s:
-        assert s.scalar(select(func.count()).select_from(Run))==0
-        assert s.scalar(select(func.count()).select_from(RunGame))==0
+        assert s.scalar(select(func.count()).select_from(Run))==2
+        assert s.scalar(select(func.count()).select_from(Bet))==0
+    assert post(client,body(games),key).json()['run']['id']==accepted['run']['id']
 
 def test_concurrent_retry_and_separate_simulation(api):
     client,engine,games=api; key=uuid4()
@@ -112,10 +142,13 @@ def test_concurrent_retry_and_separate_simulation(api):
     assert post(client,body(games)).status_code==201
     with Session(engine) as s:
         assert s.scalar(select(func.count()).select_from(Run))==2
+        assert s.scalar(select(func.count()).select_from(Bet))==0
+    drain(engine)
+    with Session(engine) as s:
         assert s.scalar(select(func.count()).select_from(Bet))==8
 
 def test_ownership_retention(api):
-    client,engine,games=api; saved=post(client,body(games)).json()
+    client,engine,games=api; saved=finished_post(client,body(games)).json()
     with Session(engine) as s:
         from uuid import UUID
         run=s.get(Run,UUID(saved['run']['id']))
@@ -146,8 +179,8 @@ def test_quote_lock(api,monkeypatch):
             selection=s.get(Selection,games[0].markets[0].selections[0].id); selection.price=Decimal('3'); started.set(); s.commit()
         done.set()
     with ThreadPoolExecutor(max_workers=2) as pool:
-        future=pool.submit(writer); response=post(client,body(games)); future.result(timeout=5)
-    assert response.status_code==201 and done.is_set()
+        future=pool.submit(writer); response=finished_post(client,body(games)); future.result(timeout=5)
+    assert response.status_code==200 and done.is_set()
     assert all(b['price']=='1.9091' for b in response.json()['bets'])
 
 
@@ -160,10 +193,11 @@ def test_zero_spread_mixed_cutoff_and_invalid_pair(api, monkeypatch):
         s.get(Selection,games[2].markets[0].selections[0].id).is_active=False
         s.get(Game,games[3].id).status='canceled'
         s.commit()
-    times=iter([NOW,NOW,NOW+timedelta(seconds=1)])
-    monkeypatch.setattr('app.runs.utc_now',lambda:next(times))
-    response=post(client,body(games))
-    assert response.status_code==201
+    key=uuid4()
+    assert post(client,body(games),key).status_code==201
+    monkeypatch.setattr('app.run_worker.db_now',lambda session:NOW+timedelta(seconds=1))
+    response=finished_post(client,body(games),key)
+    assert response.status_code==200
     saved=response.json()
     assert len(saved['bets'])==1 and saved['bets'][0]['line']=='0.00'
     assert [x['reason'] for x in saved['skipped_games']]==['kickoff_reached','spread_unavailable','game_not_scheduled','spread_unavailable']
@@ -228,7 +262,9 @@ def test_live_http_persistence_smoke(api, monkeypatch):
             key=str(uuid4()); headers={'Idempotency-Key':key}
             created=http.post('/api/runs',json=body(games),headers=headers)
             assert created.status_code==201
-            saved=created.json(); ident=saved['run']['id']
+            assert created.json()['bets']==[]
+            drain(engine)
+            saved=http.post('/api/runs',json=body(games),headers=headers).json(); ident=saved['run']['id']
             replay=http.post('/api/runs',json=body(games),headers=headers)
             assert replay.status_code==200 and replay.json()==saved
             assert http.get('/api/runs').json()==[saved['run']]

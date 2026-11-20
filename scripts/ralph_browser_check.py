@@ -18,7 +18,11 @@ from urllib.request import urlopen
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--live", action="store_true")
+    parser.add_argument("--backend-arg", action="append", default=[],
+                        help="Extra argument for the guarded live backend fixture (repeatable)")
     args = parser.parse_args()
+    if args.backend_arg and not args.live:
+        parser.error("--backend-arg requires --live")
     env = {**os.environ, "CFBD_API_KEY": "", "ODDS_API_KEY": "",
            "LIVE_API": "", "LIVE_RUN_DB_FILE": "", "TEST_FRONTEND_PORT": "5175",
            "TEST_API_BASE_URL": "http://127.0.0.1:8017", "PLAYWRIGHT_CHANNEL": "chromium"}
@@ -35,7 +39,7 @@ def main():
                 server = subprocess.Popen([
                     "/opt/venv/bin/python", "tests/support/live_backend.py",
                     "--metadata", str(metadata), "--port", "8017",
-                    "--origin", "http://127.0.0.1:5175"], env=env)
+                    "--origin", "http://127.0.0.1:5175", *args.backend_arg], env=env)
                 deadline = time.monotonic() + 90
                 while True:
                     if server.poll() is not None:

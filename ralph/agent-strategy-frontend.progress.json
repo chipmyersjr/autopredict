@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "plan": "progress/6_1_agent_strategy/front_end/plan.md",
+  "area_status": "complete",
+  "tasks": {
+    "FE-01": {
+      "title": "Extend Run clients for Agent creation and persisted progress",
+      "status": "complete",
+      "summary": "Extended Agent Run types, abortable progress reads, safe failure labels, and reasoning support; removed preview requests and adapted tests. Added intercepted client contracts. Whitespace check passed. Build/browser checks await runner verification because Node is unavailable and Docker access is denied. No protected-file edits or Git mutations performed.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build current backend and fixture dependencies passed",
+        "Build shared isolated browser image passed",
+        "Frontend build and controlled browser regressions passed"
+      ],
+      "files": [
+        "frontend/src/api/runs.ts",
+        "frontend/src/api/strategies.ts",
+        "frontend/src/pages/GamesPage.tsx",
+        "frontend/src/pages/RunsPage.tsx",
+        "frontend/tests/agent-clients.spec.ts",
+        "frontend/tests/imported-spreads.spec.ts",
+        "frontend/tests/results-api.spec.ts",
+        "frontend/tests/runs.spec.ts",
+        "frontend/tests/strategies-live.spec.ts",
+        "frontend/tests/strategies.spec.ts",
+        "progress/6_1_agent_strategy/front_end/plan.md",
+        "ralph/agent-strategy-frontend.progress.json"
+      ]
+    },
+    "FE-02": {
+      "title": "Replace preview and auto-selection with the guided creation flow",
+      "status": "complete",
+      "summary": "Implemented guided Strategy \u2192 Games \u2192 Finalize creation with explicit strategy choice, preserved selections, Refresh review, exact stake validation, and durable request recovery. Added desktop/mobile coverage and adapted existing regressions. Whitespace check passed; build/browser checks await runner verification because Node/npm are unavailable and Docker access is denied. No protected-file edits or Git mutations.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build current backend and fixture dependencies passed",
+        "Build shared isolated browser image passed",
+        "Frontend build and controlled browser regressions passed"
+      ],
+      "files": [
+        "frontend/src/api/games.ts",
+        "frontend/src/components/DryRunForm.tsx",
+        "frontend/src/pages/GamesPage.tsx",
+        "frontend/src/styles.css",
+        "frontend/tests/games.spec.ts",
+        "frontend/tests/guided-creation.spec.ts",
+        "frontend/tests/imported-spreads.spec.ts",
+        "frontend/tests/runs-live.spec.ts",
+        "frontend/tests/runs.spec.ts",
+        "frontend/tests/settlement-live.spec.ts",
+        "frontend/tests/strategies.spec.ts",
+        "frontend/tests/support/guided.ts",
+        "progress/6_1_agent_strategy/front_end/plan.md",
+        "ralph/agent-strategy-frontend.progress.json"
+      ]
+    },
+    "FE-03": {
+      "title": "Add real persisted execution progress and recovery",
+      "status": "complete",
+      "summary": "Fixed duplicate progress reads during StrictMode replay and terminal-refresh races that dismissed detail retry errors. Preserved server polling, recovery, and settlement guards. Whitespace check passed; browser/build verification awaits runner because Node is unavailable and Docker access is denied. No protected-file edits or Git mutations performed.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build current backend and fixture dependencies passed",
+        "Build shared isolated browser image passed",
+        "Frontend build and controlled browser regressions passed"
+      ],
+      "files": [
+        "frontend/src/pages/RunsPage.tsx",
+        "frontend/tests/execution-progress.spec.ts",
+        "frontend/tests/runs.spec.ts",
+        "frontend/tests/settlement.spec.ts",
+        "progress/6_1_agent_strategy/front_end/plan.md",
+        "ralph/agent-strategy-frontend.progress.json"
+      ]
+    },
+    "FE-04": {
+      "title": "Display saved Agent reasoning without changing financial history",
+      "status": "complete",
+      "summary": "Implemented accessible, plain-text saved reasoning disclosures with 1,000-character limits and mobile wrapping. Added desktop/mobile regression coverage for keyboard access, HTML safety, settlement persistence, snapshots, and strategy labels. Whitespace checks passed; browser/build verification awaits the runner because Node is unavailable and Docker access is denied. No protected files or Git state changed.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build current backend and fixture dependencies passed",
+        "Build shared isolated browser image passed",
+        "Frontend build and controlled browser regressions passed"
+      ],
+      "files": [
+        "frontend/src/pages/RunsPage.tsx",
+        "frontend/src/styles.css",
+        "frontend/tests/saved-reasoning.spec.ts",
+        "progress/6_1_agent_strategy/front_end/plan.md",
+        "ralph/agent-strategy-frontend.progress.json"
+      ]
+    },
+    "FE-05": {
+      "title": "Prove the complete guided Random and Agent flows",
+      "status": "complete",
+      "summary": "Strengthened existing desktop/mobile Agent live acceptance assertions for persisted progress, replay immutability, financial separation, and all-failed retry outcomes. Whitespace passed. Required Docker build/browser checks were attempted but prevented by sandbox filesystem/socket restrictions; runner verification remains required. No Git or protected-file edits performed.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build current backend and fixture dependencies passed",
+        "Build shared isolated browser image passed",
+        "Frontend build and real API/worker PostgreSQL browser acceptance passed"
+      ],
+      "files": [
+        "frontend/tests/agent-live.spec.ts",
+        "frontend/tests/settlement-live.spec.ts",
+        "frontend/tests/support/live_backend.py",
+        "progress/6_1_agent_strategy/front_end/plan.md",
+        "ralph/agent-strategy-frontend.progress.json"
+      ]
+    }
+  }
+}

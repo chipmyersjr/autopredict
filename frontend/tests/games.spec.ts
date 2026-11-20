@@ -16,7 +16,7 @@ function game(extra: Partial<Game> = {}): Game {
   return { ...timestamps, id: 'game', season: 2026, week: 5, home_team: 'USC', away_team: 'UCLA', start_time: '2026-10-02T19:00:00+00:00', status: 'scheduled', home_score: null, away_score: null, venue: null, notes: 'Demo data: fictional matchup', markets: [market('market', [selection('home', 'USC', '-3.50'), selection('away', 'UCLA', '3.50')])], ...extra }
 }
 
-test('renders paired signed spreads, exact odds and local kickoff', async ({ page }) => {
+test('renders paired signed spreads, exact odds and Pacific kickoff', async ({ page }) => {
   const requests: string[] = []
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     if (route.request().url().endsWith('/api/strategies')) { await route.fulfill({ json: [] }); return }
@@ -27,7 +27,7 @@ test('renders paired signed spreads, exact odds and local kickoff', async ({ pag
   const card = page.getByRole('article')
   await expect(card).toHaveCount(1)
   await expect(card.locator('time')).toContainText('12:00 PM PDT')
-  await expect(page.getByRole('status')).toContainText('America/Los_Angeles')
+  await expect(page.getByRole('status')).toContainText('Pacific time')
   await expect(card.locator('.line')).toHaveText(['-3.5', '+3.5'])
   await expect(card.locator('.price strong')).toHaveText(['1.9091', '1.9091'])
   await expect(card.getByText('Score:')).toHaveCount(0)

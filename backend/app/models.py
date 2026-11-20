@@ -73,9 +73,9 @@ class Selection(Timestamps, Base):
 class Strategy(Timestamps, Base):
     __tablename__ = "strategies"
     __table_args__ = (
-        CheckConstraint("type = 'random'", name="ck_strategies_type"),
+        CheckConstraint("type IN ('random', 'agent')", name="ck_strategies_type"),
         CheckConstraint("length(trim(name)) > 0", name="ck_strategies_name"),
-        CheckConstraint("config IS NULL OR config = '{}'::jsonb", name="ck_strategies_config"),
+        CheckConstraint("(type = 'random' AND (config IS NULL OR config = '{}'::jsonb)) OR (type = 'agent' AND config IS NOT NULL AND config = '{\"profile\":\"FootballAnalysisExpert\"}'::jsonb)", name="ck_strategies_config"),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
@@ -99,6 +99,13 @@ class Run(Timestamps, Base):
         UniqueConstraint("user_id", "request_id", name="uq_runs_user_request"),
         CheckConstraint("starting_bankroll > 0 AND stake_per_bet > 0", name="ck_runs_money"),
         CheckConstraint("status IN ('open', 'completed')", name="ck_runs_status"),
+        CheckConstraint("execution_status IN ('queued', 'running', 'completed', 'failed')", name="ck_runs_execution_status"),
+        CheckConstraint("execution_generation >= 0", name="ck_runs_execution_generation"),
+        CheckConstraint("(execution_status = 'running' AND execution_owner_token IS NOT NULL AND execution_lease_expires_at IS NOT NULL AND execution_started_at IS NOT NULL AND execution_generation > 0) OR (execution_status <> 'running' AND execution_owner_token IS NULL AND execution_lease_expires_at IS NULL)", name="ck_runs_execution_owner"),
+        CheckConstraint("(execution_status IN ('queued', 'running') AND execution_finished_at IS NULL AND execution_message IS NULL AND status = 'open') OR (execution_status IN ('completed', 'failed') AND execution_finished_at IS NOT NULL)", name="ck_runs_execution_terminal"),
+        CheckConstraint("execution_status <> 'queued' OR execution_started_at IS NULL", name="ck_runs_execution_queued"),
+        CheckConstraint("execution_status <> 'failed' OR (status = 'open' AND final_bankroll IS NULL AND total_profit IS NULL AND roi IS NULL AND end_time IS NULL)", name="ck_runs_execution_failed"),
+        CheckConstraint("execution_finished_at IS NULL OR execution_started_at IS NULL OR execution_finished_at >= execution_started_at", name="ck_runs_execution_times"),
     )
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), index=True)
@@ -108,6 +115,13 @@ class Run(Timestamps, Base):
     name: Mapped[str | None] = mapped_column(String(255))
     notes: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(50), default="open")
+    execution_status: Mapped[str] = mapped_column(String(20), server_default="completed")
+    execution_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    execution_finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    execution_message: Mapped[str | None] = mapped_column(String(255))
+    execution_owner_token: Mapped[UUID | None] = mapped_column(Uuid)
+    execution_generation: Mapped[int] = mapped_column(BigInteger, server_default="0")
+    execution_lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     starting_bankroll: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     stake_per_bet: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
@@ -125,7 +139,15 @@ class RunGame(Timestamps, Base):
         UniqueConstraint("run_id", "game_id", name="uq_run_games_game"),
         UniqueConstraint("run_id", "position", name="uq_run_games_position"),
         CheckConstraint("position >= 0", name="ck_run_games_position"),
-        CheckConstraint("skip_reason IN ('game_not_scheduled', 'kickoff_reached', 'spread_unavailable')", name="ck_run_games_skip"),
+        CheckConstraint("skip_reason IN ('game_not_scheduled', 'kickoff_reached', 'spread_unavailable', 'agent_unavailable', 'research_failed', 'invalid_agent_decision', 'quote_changed')", name="ck_run_games_skip"),
+        CheckConstraint("state IN ('queued', 'analysing', 'retrying', 'predicted', 'bet_created', 'skipped')", name="ck_run_games_state"),
+        CheckConstraint("attempts BETWEEN 0 AND 2", name="ck_run_games_attempts"),
+        CheckConstraint("(state = 'skipped' AND skip_reason IS NOT NULL) OR (state <> 'skipped' AND skip_reason IS NULL)", name="ck_run_games_state_skip"),
+        CheckConstraint("state NOT IN ('analysing', 'retrying', 'predicted') OR attempts > 0", name="ck_run_games_state_attempts"),
+        CheckConstraint("state <> 'retrying' OR attempts = 1", name="ck_run_games_retry"),
+        CheckConstraint("prediction_input IS NULL OR jsonb_typeof(prediction_input) = 'object'", name="ck_run_games_input"),
+        CheckConstraint("validated_prediction IS NULL OR jsonb_typeof(validated_prediction) = 'object'", name="ck_run_games_prediction"),
+        CheckConstraint("state <> 'predicted' OR (prediction_input IS NOT NULL AND validated_prediction IS NOT NULL)", name="ck_run_games_predicted"),
     )
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     run_id: Mapped[UUID] = mapped_column(ForeignKey("runs.id", ondelete="RESTRICT"), index=True)
@@ -133,6 +155,10 @@ class RunGame(Timestamps, Base):
     included_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     position: Mapped[int] = mapped_column(Integer)
     skip_reason: Mapped[str | None] = mapped_column(String(50))
+    state: Mapped[str] = mapped_column(String(20), server_default="bet_created")
+    attempts: Mapped[int] = mapped_column(Integer, server_default="0")
+    prediction_input: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True))
+    validated_prediction: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True))
 
 
 class Bet(Timestamps, Base):
@@ -156,6 +182,7 @@ class Bet(Timestamps, Base):
             name="ck_bets_settlement_consistency",
         ),
         CheckConstraint("settlement_home_score >= 0 AND settlement_away_score >= 0", name="ck_bets_settlement_scores"),
+        CheckConstraint("reasoning IS NULL OR (length(reasoning) BETWEEN 1 AND 1000 AND reasoning !~ '^[[:space:]]|[[:space:]]$')", name="ck_bets_reasoning"),
     )
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     run_id: Mapped[UUID] = mapped_column(ForeignKey("runs.id", ondelete="RESTRICT"), index=True)
@@ -164,6 +191,7 @@ class Bet(Timestamps, Base):
     market_id: Mapped[UUID] = mapped_column(ForeignKey("markets.id", ondelete="RESTRICT"), index=True)
     side: Mapped[str] = mapped_column(String(100))
     line: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    reasoning: Mapped[str | None] = mapped_column(String(1000))
     home_team: Mapped[str] = mapped_column(String(255))
     away_team: Mapped[str] = mapped_column(String(255))
     kickoff_at_placement: Mapped[datetime] = mapped_column(DateTime(timezone=True))

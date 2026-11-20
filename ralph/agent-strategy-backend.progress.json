@@ -1,0 +1,152 @@
+{
+  "version": 1,
+  "plan": "progress/6_1_agent_strategy/backend/plan.md",
+  "area_status": "complete",
+  "tasks": {
+    "BE-01": {
+      "title": "Add Agent Strategy and durable execution persistence",
+      "status": "complete",
+      "summary": "Corrected the persistence regression to assert PostgreSQL\u2019s exact overlength error and verify the 1,000-character boundary. Syntax and whitespace checks passed. PostgreSQL tests require runner verification because Docker access is denied here. Runner-owned files and Git state were left untouched.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build backend dependencies passed",
+        "Backend regressions with disposable PostgreSQL databases passed"
+      ],
+      "files": [
+        "backend/app/models.py",
+        "backend/app/runs.py",
+        "backend/app/schemas.py",
+        "backend/tests/test_agent_persistence.py",
+        "migrations/versions/0006_agent_execution.py",
+        "progress/6_1_agent_strategy/backend/plan.md",
+        "ralph/agent-strategy-backend.progress.json"
+      ]
+    },
+    "BE-02": {
+      "title": "Add native Ollama clients and the server-owned profile",
+      "status": "complete",
+      "summary": "Reviewed the preserved implementation against BE-02 and governing designs; no remaining acceptance gaps found. Whitespace check passed. Recovery feedback reports 392 backend tests and Docker build passed. Local rerun was unavailable due to Docker permissions and an unusable virtualenv. No live provider calls, file edits, or Git mutations performed; ready for runner verification.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build backend dependencies passed",
+        "Backend regressions with disposable PostgreSQL databases passed"
+      ],
+      "files": [
+        ".env.example",
+        "backend/app/agent_profiles/FootballAnalysisExpert.md",
+        "backend/app/agent_profiles/__init__.py",
+        "backend/app/agent_services.py",
+        "backend/app/seed_strategy.py",
+        "backend/app/settings.py",
+        "backend/pyproject.toml",
+        "backend/tests/test_agent_services.py",
+        "backend/tests/test_settings.py",
+        "backend/uv.lock",
+        "progress/6_1_agent_strategy/backend/plan.md",
+        "ralph/agent-strategy-backend.progress.json"
+      ]
+    },
+    "BE-03": {
+      "title": "Implement shared predictors and the bounded Agent tool loop",
+      "status": "complete",
+      "summary": "Implemented shared predictors, bounded Agent tool exchanges, captured-selection resolution, and fake-based tests. All 20 runnable predictor tests and whitespace checks passed. Native SDK verification requires runner-installed ollama dependencies; full regressions remain for the runner. Protected files and Git state were untouched.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build backend dependencies passed",
+        "Backend regressions with disposable PostgreSQL databases passed"
+      ],
+      "files": [
+        "backend/app/predictors.py",
+        "backend/tests/test_predictors.py",
+        "progress/6_1_agent_strategy/backend/plan.md",
+        "ralph/agent-strategy-backend.progress.json"
+      ]
+    },
+    "BE-04": {
+      "title": "Build durable Run claims, progress and restart recovery",
+      "status": "complete",
+      "summary": "Implemented durable worker claims, renewable leases, fencing, persisted attempts/predictions, restart recovery, progress snapshots, shutdown handling and --once execution. Added PostgreSQL recovery and concurrency tests. Syntax and whitespace checks passed; Docker socket permissions prevented running PostgreSQL tests locally. Runner-owned files and Git state were untouched.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build backend dependencies passed",
+        "Backend regressions with disposable PostgreSQL databases passed"
+      ],
+      "files": [
+        "backend/app/run_worker.py",
+        "backend/tests/test_run_worker.py",
+        "progress/6_1_agent_strategy/backend/plan.md",
+        "ralph/agent-strategy-backend.progress.json"
+      ]
+    },
+    "BE-05": {
+      "title": "Refactor creation and atomic best-effort Bet finalization",
+      "status": "complete",
+      "summary": "Corrected the downgrade regression fixture to clear execution_started_at when setting queued status. Python syntax and whitespace checks pass. Docker permissions prevented local regressions; ready for runner verification. No protected files or Git state changed.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build backend dependencies passed",
+        "Backend regressions with disposable PostgreSQL databases passed"
+      ],
+      "files": [
+        "backend/app/run_worker.py",
+        "backend/app/runs.py",
+        "backend/tests/test_agent_persistence.py",
+        "backend/tests/test_dashboard.py",
+        "backend/tests/test_ingress_api.py",
+        "backend/tests/test_resolution_handoff.py",
+        "backend/tests/test_run_finalization.py",
+        "backend/tests/test_run_settlement.py",
+        "backend/tests/test_runs.py",
+        "backend/tests/test_settlement_persistence.py",
+        "progress/6_1_agent_strategy/backend/plan.md",
+        "ralph/agent-strategy-backend.progress.json"
+      ]
+    },
+    "BE-06": {
+      "title": "Expose creation, progress and reasoning APIs",
+      "status": "complete",
+      "summary": "Implemented owner-scoped execution API, typed progress responses, retired preview with 410, and asynchronous Run/ reasoning regressions. Syntax and whitespace checks passed. Runtime tests require runner verification because Docker access is denied and local pytest is unavailable. Protected files and Git state were untouched.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build backend dependencies passed",
+        "Backend regressions with disposable PostgreSQL databases passed"
+      ],
+      "files": [
+        "backend/app/routes.py",
+        "backend/app/schemas.py",
+        "backend/tests/test_execution_api.py",
+        "backend/tests/test_ingress_api.py",
+        "backend/tests/test_strategies.py",
+        "progress/6_1_agent_strategy/backend/plan.md",
+        "ralph/agent-strategy-backend.progress.json"
+      ]
+    },
+    "BE-07": {
+      "title": "Integrate worker startup and prove the backend handoff",
+      "status": "complete",
+      "summary": "Integrated durable worker startup, opt-in controlled fixture worker with restart/cleanup, HTTP handoff coverage, and concise documentation. Local checks: 23 tests passed; syntax and whitespace passed. PostgreSQL/Compose verification awaits runner because Docker access is denied; SDK dependencies were unavailable locally. No live-provider or browser verification claimed. No Git operations or protected-file edits performed.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build backend dependencies passed",
+        "Backend regressions with disposable PostgreSQL databases passed"
+      ],
+      "files": [
+        ".env.example",
+        "Makefile",
+        "README.md",
+        "backend/tests/test_resolution_handoff.py",
+        "docker-compose.yml",
+        "frontend/tests/support/live_backend.py",
+        "progress/6_1_agent_strategy/backend/plan.md",
+        "ralph/agent-strategy-backend.progress.json"
+      ]
+    }
+  }
+}
