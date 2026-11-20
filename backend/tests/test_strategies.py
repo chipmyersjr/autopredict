@@ -6,14 +6,14 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
-from sqlalchemy import inspect, select, event
+from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
 from app.main import app
 from app.models import Game, Market, Selection, Strategy
 from app.schemas import DecisionRequest, StrategyCreate
-from app.seed import demo_games, seed_demo
+from app.seed import demo_games
 from app.seed_strategy import RANDOM_STRATEGY_ID, seed_strategy
 from app.strategies import resolve_candidates, random_decisions
 
@@ -169,71 +169,31 @@ def test_strategy_bootstrap_create_and_constraints(api):
             session.rollback()
 
 
-def test_preview_order_precision_skips_and_no_writes(api, monkeypatch):
-    client, engine = api
-    fixtures = demo_games(date(2026, 10, 1))
-    seed_demo(engine, fixtures)
-    seed_strategy(engine)
-    statements = []
-    def capture(conn, cursor, statement, params, context, many):
-        statements.append(statement.lstrip().split()[0].upper())
-    event.listen(engine, "before_cursor_execute", capture)
-    try:
-        ids = [str(g.id) for g in reversed(fixtures)]
-        response = client.post(PATH, json={"game_ids": ids})
-        assert response.status_code == 200
-        body = response.json()
-        assert body["requested_game_ids"] == ids
-        assert [d["game_id"] for d in body["decisions"]] == ids[1:]
-        assert body["skipped_games"] == [{"game_id": ids[0], "reason": "spread_unavailable"}]
-        assert body["generated_at"].endswith("Z")
-        # Four graph/strategy reads plus observation and provider-link lookups
-        # for each of the four eligible demo markets; preview remains read-only.
-        assert statements == ["SELECT"] * 12
-        for decision in body["decisions"]:
-            assert decision["price"] == "1.9091" and decision["quote_provenance"] is None
-            source = next(s for g in fixtures for m in g.markets for s in m.selections if str(s.id) == decision["selection_id"])
-            assert Decimal(decision["line"]) == source.line and decision["side"] == source.side
-    finally:
-        event.remove(engine, "before_cursor_execute", capture)
-    with Session(engine) as session:
-        for game in session.scalars(select(Game)):
-            game.start_time = NOW
-        session.commit()
-    all_skipped = client.post(PATH, json={"game_ids": ids}).json()
-    assert all_skipped["decisions"] == []
-    assert all(s["reason"] == "kickoff_reached" for s in all_skipped["skipped_games"])
-    # Returned snapshots cannot be rewritten by later database updates.
-    assert len(body["decisions"]) == 4
-    generator = MagicMock()
-    monkeypatch.setattr("app.routes.random_decisions", generator)
-    assert client.post(PATH, json={"game_ids": [ids[0], str(uuid4())]}).status_code == 404
-    generator.assert_not_called()
-    assert engine.pool.checkedout() == 0
-
-
-def test_preview_errors_and_cors(api):
-    client, engine = api
-    seed_strategy(engine)
-    for ids in [[], ["bad"], [str(uuid4())] * 2]:
-        assert client.post(PATH, json={"game_ids": ids}).status_code == 422
-    assert client.post(f"/api/strategies/{uuid4()}/decisions", json={"game_ids": [str(uuid4())]}).status_code == 404
-    with Session(engine) as session:
-        session.get(Strategy, RANDOM_STRATEGY_ID).is_active = False
-        session.commit()
-    assert client.post(PATH, json={"game_ids": [str(uuid4())]}).status_code == 409
-    for origin, status in [("http://localhost:5173", 200), ("https://unapproved.example", 400)]:
-        response = client.options(PATH, headers={"Origin": origin, "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type"})
-        assert response.status_code == status
-        if status == 200:
-            assert response.headers["access-control-allow-origin"] == origin
+def test_preview_retired_without_database_or_prediction(monkeypatch):
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Retired preview must not access the database")
+    monkeypatch.setattr("app.database.Session", forbidden)
+    monkeypatch.setattr("app.main.create_database_engine", lambda settings: MagicMock())
+    with TestClient(app) as client:
+        for strategy_id in [RANDOM_STRATEGY_ID, uuid4()]:
+            for body in [None, {}, {"game_ids": ["bad"]}]:
+                response = client.post(f"/api/strategies/{strategy_id}/decisions", json=body)
+                assert response.status_code == 410
+                assert "POST /api/runs" in response.json()["detail"]
+        schema = client.get("/openapi.json").json()
+        operation = schema["paths"]["/api/strategies/{strategy_id}/decisions"]["post"]
+        assert operation["deprecated"] and "410" in operation["responses"]
+        for origin, status in [("http://localhost:5173", 200), ("https://unapproved.example", 400)]:
+            response = client.options(PATH, headers={"Origin": origin, "Access-Control-Request-Method": "POST",
+                                                     "Access-Control-Request-Headers": "content-type"})
+            assert response.status_code == status
 
 
 @pytest.mark.parametrize("method,path,body", [
     ("get", "/api/strategies", None),
     ("get", f"/api/strategies/{RANDOM_STRATEGY_ID}", None),
     ("post", "/api/strategies", {"name": "X"}),
-    ("post", PATH, {"game_ids": [str(uuid4())]}),
+    ("get", f"/api/runs/{uuid4()}/execution", None),
 ])
 def test_database_errors_are_safe(monkeypatch, method, path, body):
     session = MagicMock()

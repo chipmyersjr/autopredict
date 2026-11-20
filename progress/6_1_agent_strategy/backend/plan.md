@@ -99,13 +99,13 @@ These are implementation details under design 6, not a replacement product speci
   - Validation: Concurrent same-key POSTs, crash/response loss around acceptance/final commit, quote/alias/selection changes during inference, kickoff crossing, 50→47 example, all failed, invalid bankroll, injected rollback, duplicate finalization, unchanged historical reasoning and existing settlement/dashboard numeric oracles.
   - Completion notes: Corrected the downgrade regression fixture to clear execution_started_at when setting queued status. Python syntax and whitespace checks pass. Docker permissions prevented local regressions; ready for runner verification. No protected files or Git state changed. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: backend/app/run_worker.py, backend/app/runs.py, backend/tests/test_agent_persistence.py, backend/tests/test_dashboard.py, backend/tests/test_ingress_api.py, backend/tests/test_resolution_handoff.py, backend/tests/test_run_finalization.py, backend/tests/test_run_settlement.py, backend/tests/test_runs.py, backend/tests/test_settlement_persistence.py, progress/6_1_agent_strategy/backend/plan.md, ralph/agent-strategy-backend.progress.json. Logs: .git/ralph/d796df80c525cf1e/BE-05-009.*. Automated verification uses disposable databases and controlled model/search responses. Actual local Ollama plus live DuckDuckGo verification is separate; no profitable-strategy claim or live-service verification is implied. Final cross-area browser proof belongs to FE-05.
 
-- [ ] BE-06 — Expose creation, progress and reasoning APIs
-  - Status: not_started
+- [x] BE-06 — Expose creation, progress and reasoning APIs
+  - Status: complete
   - Scope: Wire 201/200 accepted/replay responses, owner-scoped execution GET, extended Run/Bet reads, new skips and retired preview route; update OpenAPI and regressions.
   - Dependencies: BE-05.
   - Acceptance criteria: The shared frontend contract above is observable for both strategy types; progress is read-only and internally consistent; no prediction on legacy preview, history, settlement or dashboard reads; secrets/internal traces never appear in responses.
   - Validation: HTTP contract tests for acceptance/replay/processing/partial/terminal failure, ownership/404/409/410/422/503, snapshot consistency, ordering, all Bet serializers and no inference during reads. Keep creation/ingress/settlement/dashboard regression coverage.
-  - Completion notes: Not implemented or validated.
+  - Completion notes: Implemented owner-scoped execution API, typed progress responses, retired preview with 410, and asynchronous Run/ reasoning regressions. Syntax and whitespace checks passed. Runtime tests require runner verification because Docker access is denied and local pytest is unavailable. Protected files and Git state were untouched. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: backend/app/routes.py, backend/app/schemas.py, backend/tests/test_execution_api.py, backend/tests/test_ingress_api.py, backend/tests/test_strategies.py, progress/6_1_agent_strategy/backend/plan.md, ralph/agent-strategy-backend.progress.json. Logs: .git/ralph/d796df80c525cf1e/BE-06-010.*. Automated verification uses disposable databases and controlled model/search responses. Actual local Ollama plus live DuckDuckGo verification is separate; no profitable-strategy claim or live-service verification is implied. Final cross-area browser proof belongs to FE-05.
 
 - [ ] BE-07 — Integrate worker startup and prove the backend handoff
   - Status: not_started
@@ -169,4 +169,11 @@ BE-01 → BE-02 → BE-03 → BE-04 → BE-05 → BE-06 → BE-07. FE-01 may imp
 - Completed tasks: BE-05.
 - Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
 - Completion notes: Corrected the downgrade regression fixture to clear execution_started_at when setting queued status. Python syntax and whitespace checks pass. Docker permissions prevented local regressions; ready for runner verification. No protected files or Git state changed.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
+
+### 2026-11-20 03:28 UTC — BE-06 Ralph execution
+
+- Completed tasks: BE-06.
+- Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
+- Completion notes: Implemented owner-scoped execution API, typed progress responses, retired preview with 410, and asynchronous Run/ reasoning regressions. Syntax and whitespace checks passed. Runtime tests require runner verification because Docker access is denied and local pytest is unavailable. Protected files and Git state were untouched.
 - Next: Continue the configured task sequence; live-provider verification remains separately reported.

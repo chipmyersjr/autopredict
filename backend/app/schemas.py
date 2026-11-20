@@ -152,6 +152,26 @@ class SkippedGame(BaseModel):
     reason: SkipReason
 
 
+class GameExecutionResponse(BaseModel):
+    game_id: UUID
+    state: GameExecutionState
+    attempts: int = Field(ge=0, le=2)
+    skip_reason: SkipReason | None
+
+
+class ExecutionResponse(BaseModel):
+    run_id: UUID
+    status: ExecutionStatus
+    total_games: int
+    completed_games: int
+    predicted_games: int
+    skipped_games: int
+    retrying_games: int
+    queued_games: int
+    games: list[GameExecutionResponse]
+    message: str | None
+
+
 class DecisionResponse(BaseModel):
     strategy_id: UUID
     generated_at: datetime

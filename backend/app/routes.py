@@ -11,8 +11,9 @@ from sqlalchemy.orm import Session, selectinload
 from app.database import get_session
 from app.models import Game, Market, Strategy
 from app.schemas import GameResponse, MarketResponse
-from app.schemas import StrategyCreate, StrategyResponse, DecisionRequest, DecisionResponse
-from app.strategies import utc_now, resolve_candidates, random_decisions
+from app.schemas import StrategyCreate, StrategyResponse, ExecutionResponse
+from app.strategies import utc_now
+from app.run_worker import execution_snapshot
 from app.ingress import current_week
 from app.refresh import RefreshService
 from app.settings import Settings
@@ -136,35 +137,30 @@ def strategy_detail(strategy_id: UUID, session: DatabaseSession):
     return find_strategy(session, strategy_id)
 
 
-@router.post("/strategies/{strategy_id}/decisions", response_model=DecisionResponse, tags=["Strategies"], responses={404: {"description": "Strategy or game not found"}, 409: {"description": "Strategy inactive"}})
-def preview_decisions(strategy_id: UUID, body: DecisionRequest, session: DatabaseSession):
-    """Generate decisions from stored spreads; creates no bets or runs."""
-    strategy = find_strategy(session, strategy_id)
-    if not strategy.is_active:
-        raise HTTPException(status_code=409, detail="Strategy inactive")
-    games = session.scalars(select(Game).where(Game.id.in_(body.game_ids)).options(GAME_GRAPH)).all()
-    by_id = {game.id: game for game in games}
-    if any(game_id not in by_id for game_id in body.game_ids):
-        raise HTTPException(status_code=404, detail="Game not found")
-    now = utc_now()
-    groups, skips = [], []
-    for game_id in body.game_ids:
-        candidates, skip = resolve_candidates(by_id[game_id], now, session)
-        groups.append(candidates)
-        if skip is not None:
-            skips.append(skip)
-    return DecisionResponse(
-        strategy_id=strategy.id, generated_at=now, requested_game_ids=body.game_ids,
-        decisions=random_decisions(groups), skipped_games=skips,
-    )
+@router.post("/strategies/{strategy_id}/decisions", status_code=410, deprecated=True, tags=["Strategies"],
+             responses={410: {"description": "Preview retired; create a Run with POST /api/runs"}})
+def preview_decisions(strategy_id: UUID):
+    """Retired. Submit POST /api/runs and read its persisted execution progress."""
+    raise HTTPException(410, "Decision preview retired; create a Run with POST /api/runs")
 
 
 @router.post("/runs", response_model=RunCreationResponse, status_code=201, tags=["Runs"], responses={200: {"model": RunCreationResponse, "description": "Original persisted result replayed"}, 404: {"description": "Strategy or game not found"}, 409: {"description": "Inactive strategy, no eligible games, or request key conflict"}})
 def run_create(body: RunCreate, session: DatabaseSession, response: Response,
                idempotency_key: Annotated[UUID, Header(alias="Idempotency-Key")]):
+    """Accept durable queued work without inference; replay returns current saved state."""
     saved, created = create_run(session, body, idempotency_key)
     response.status_code = 201 if created else 200
     return saved
+
+
+@router.get("/runs/{run_id}/execution", response_model=ExecutionResponse, tags=["Runs"],
+            responses={404: {"description": "Run not found"}})
+def run_execution(run_id: UUID, session: DatabaseSession):
+    """Read one owner-scoped snapshot; polling never executes predictions."""
+    snapshot = execution_snapshot(session, run_id, local_user(session))
+    if snapshot is None:
+        raise HTTPException(404, "Run not found")
+    return snapshot
 
 
 @router.get("/runs", response_model=list[RunResponse], tags=["Runs"])
