@@ -24,6 +24,20 @@ class Settings(BaseSettings):
 
     cfbd_api_key: SecretStr = SecretStr("")
     odds_api_key: SecretStr = SecretStr("")
+    ollama_host: str = "http://host.docker.internal:11434"
+    ollama_model: str = Field(default="gpt-oss:20b", min_length=1, max_length=200)
+
+    @field_validator("ollama_host")
+    @classmethod
+    def validate_ollama_host(cls, host: str) -> str:
+        url = urlsplit(host)
+        if (url.scheme not in {"http", "https"} or not url.hostname
+                or url.username or url.password or url.query or url.fragment
+                or url.path not in {"", "/"}):
+            raise ValueError("Ollama host must be an HTTP(S) origin without credentials")
+        if url.hostname == "ollama.com" or url.hostname.endswith(".ollama.com"):
+            raise ValueError("Hosted Ollama inference is not supported")
+        return host.rstrip("/")
 
     @field_validator("cors_origins")
     @classmethod

@@ -25,7 +25,28 @@
     },
     "BE-02": {
       "title": "Add native Ollama clients and the server-owned profile",
-      "status": "not_started"
+      "status": "complete",
+      "summary": "Reviewed the preserved implementation against BE-02 and governing designs; no remaining acceptance gaps found. Whitespace check passed. Recovery feedback reports 392 backend tests and Docker build passed. Local rerun was unavailable due to Docker permissions and an unusable virtualenv. No live provider calls, file edits, or Git mutations performed; ready for runner verification.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build backend dependencies passed",
+        "Backend regressions with disposable PostgreSQL databases passed"
+      ],
+      "files": [
+        ".env.example",
+        "backend/app/agent_profiles/FootballAnalysisExpert.md",
+        "backend/app/agent_profiles/__init__.py",
+        "backend/app/agent_services.py",
+        "backend/app/seed_strategy.py",
+        "backend/app/settings.py",
+        "backend/pyproject.toml",
+        "backend/tests/test_agent_services.py",
+        "backend/tests/test_settings.py",
+        "backend/uv.lock",
+        "progress/6_1_agent_strategy/backend/plan.md",
+        "ralph/agent-strategy-backend.progress.json"
+      ]
     },
     "BE-03": {
       "title": "Implement shared predictors and the bounded Agent tool loop",

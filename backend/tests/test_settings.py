@@ -26,3 +26,15 @@ def test_settings_load_file_and_environment_override(tmp_path, monkeypatch):
 def test_settings_reject_invalid_port():
     with pytest.raises(ValidationError):
         Settings(_env_file=None, postgres_port=70000)
+
+
+@pytest.mark.parametrize("host", ["file:///tmp/model", "https://u:p@localhost", "https://ollama.com", "http://localhost/path"])
+def test_local_model_rejects_credentials_paths_and_hosted_service(host):
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, ollama_host=host)
+
+
+def test_local_model_settings_need_no_key():
+    settings = Settings(_env_file=None, ollama_host="http://fixture:11434/", ollama_model="fixture-model")
+    assert settings.ollama_host == "http://fixture:11434"
+    assert settings.ollama_model == "fixture-model"

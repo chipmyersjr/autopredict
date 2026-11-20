@@ -67,13 +67,13 @@ These are implementation details under design 6, not a replacement product speci
   - Validation: Disposable PostgreSQL upgrade/downgrade/re-upgrade, Alembic drift, invalid configuration/state/reasoning constraints, legacy Run/Bet reads and immutable snapshot checks. Downgrade must refuse incompatible Agent data rather than silently remove it.
   - Completion notes: Corrected the persistence regression to assert PostgreSQL’s exact overlength error and verify the 1,000-character boundary. Syntax and whitespace checks passed. PostgreSQL tests require runner verification because Docker access is denied here. Runner-owned files and Git state were left untouched. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: backend/app/models.py, backend/app/runs.py, backend/app/schemas.py, backend/tests/test_agent_persistence.py, migrations/versions/0006_agent_execution.py, progress/6_1_agent_strategy/backend/plan.md, ralph/agent-strategy-backend.progress.json. Logs: .git/ralph/d796df80c525cf1e/BE-01-002.*. Automated verification uses disposable databases and controlled model/search responses. Actual local Ollama plus live DuckDuckGo verification is separate; no profitable-strategy claim or live-service verification is implied. Final cross-area browser proof belongs to FE-05.
 
-- [ ] BE-02 — Add native Ollama clients and the server-owned profile
-  - Status: not_started
+- [x] BE-02 — Add native Ollama clients and the server-owned profile
+  - Status: complete
   - Scope: Add locked Ollama/DDGS dependencies and local model settings, registered Markdown profile, keyless DuckDuckGo search adapter and explicit shared Strategy seed.
   - Dependencies: BE-01.
   - Acceptance criteria: Local model/host are configurable; no model/search key is required; DuckDuckGo is selected explicitly; the generic search tool returns bounded normalized snippets/URLs and surfaces blocked/empty requests; unknown profiles/paths are rejected; repeat/concurrent seeding preserves existing Strategies; Random requires no research service.
   - Validation: Mocked local client and DDGS adapter tests for transport/header/timeouts, exact backend selection, query validation, normalization, empty/malformed results, throttling/blocking, cancellation and credential isolation; profile lookup/path rejection, resource cleanup, idempotent seeds and Docker packaging. No actual model pull, search call or key required for automated tests.
-  - Completion notes: Not implemented or validated.
+  - Completion notes: Reviewed the preserved implementation against BE-02 and governing designs; no remaining acceptance gaps found. Whitespace check passed. Recovery feedback reports 392 backend tests and Docker build passed. Local rerun was unavailable due to Docker permissions and an unusable virtualenv. No live provider calls, file edits, or Git mutations performed; ready for runner verification. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: .env.example, backend/app/agent_profiles/FootballAnalysisExpert.md, backend/app/agent_profiles/__init__.py, backend/app/agent_services.py, backend/app/seed_strategy.py, backend/app/settings.py, backend/pyproject.toml, backend/tests/test_agent_services.py, backend/tests/test_settings.py, backend/uv.lock, progress/6_1_agent_strategy/backend/plan.md, ralph/agent-strategy-backend.progress.json. Logs: .git/ralph/d796df80c525cf1e/BE-02-004.*. Automated verification uses disposable databases and controlled model/search responses. Actual local Ollama plus live DuckDuckGo verification is separate; no profitable-strategy claim or live-service verification is implied. Final cross-area browser proof belongs to FE-05.
 
 - [ ] BE-03 — Implement shared predictors and the bounded Agent tool loop
   - Status: not_started
@@ -141,4 +141,11 @@ BE-01 → BE-02 → BE-03 → BE-04 → BE-05 → BE-06 → BE-07. FE-01 may imp
 - Completed tasks: BE-01.
 - Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
 - Completion notes: Corrected the persistence regression to assert PostgreSQL’s exact overlength error and verify the 1,000-character boundary. Syntax and whitespace checks passed. PostgreSQL tests require runner verification because Docker access is denied here. Runner-owned files and Git state were left untouched.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
+
+### 2026-11-20 02:49 UTC — BE-02 Ralph execution
+
+- Completed tasks: BE-02.
+- Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
+- Completion notes: Reviewed the preserved implementation against BE-02 and governing designs; no remaining acceptance gaps found. Whitespace check passed. Recovery feedback reports 392 backend tests and Docker build passed. Local rerun was unavailable due to Docker permissions and an unusable virtualenv. No live provider calls, file edits, or Git mutations performed; ready for runner verification.
 - Next: Continue the configured task sequence; live-provider verification remains separately reported.
