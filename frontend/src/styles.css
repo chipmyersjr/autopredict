@@ -78,6 +78,10 @@ dd { margin: 4px 0 0; font-weight: 700; font-variant-numeric: tabular-nums; }
 .bet-list li + li { border-top: 1px solid #dce3e8; margin-top: 24px; padding-top: 24px; }
 .bet-list h3 { font-size: 1.1rem; text-transform: none; letter-spacing: normal; color: #172b3a; }
 .record-id { font-size: .8rem; }
+.bet-reasoning { margin: 12px 0; overflow-wrap: anywhere; }
+.bet-reasoning summary { cursor: pointer; color: #176451; }
+.bet-reasoning summary:focus-visible { outline: 2px solid #176451; outline-offset: 4px; }
+.bet-reasoning p { white-space: pre-wrap; }
 .profit-chart { display: block; width: 100%; height: auto; margin-top: 16px; }
 .profit-chart text { font: 14px system-ui, sans-serif; fill: currentColor; }
 .performance-table { overflow-x: auto; margin-top: 16px; }

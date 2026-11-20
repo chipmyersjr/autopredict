@@ -172,6 +172,10 @@ export function RunDetail({ id }: { id: string }) {
       <section className="state-panel" aria-label="Saved Bets"><h2>Saved Bets</h2><p>Execution snapshots are retained when current games or quotes change.</p>
         {!data.bets.length ? <p>No Bets recorded.</p> : <ul className="bet-list">{data.bets.map(bet => <li key={bet.id}><article>
           <h3>{bet.away_team} at {bet.home_team}</h3><p><strong>{savedSide(bet)} {formatLine(bet.line)}</strong> · Decimal odds <strong>{bet.price}</strong> · Stake <strong>{bet.stake}</strong></p>
+          {bet.reasoning?.trim() && <details className="bet-reasoning">
+            <summary>Agent reasoning for {bet.away_team} at {bet.home_team}</summary>
+            <p>{Array.from(bet.reasoning).slice(0, 1000).join('')}</p>
+          </details>}
           <p>Saved kickoff (Pacific): <time dateTime={bet.kickoff_at_placement}>{pacificKickoff(bet.kickoff_at_placement)}</time></p>
           <SavedBetScore bet={bet} />
           <p><span className="badge">{bet.status}</span> · Result: {bet.result ?? 'Not settled'} · Profit: {bet.profit ?? 'Not settled'}</p>

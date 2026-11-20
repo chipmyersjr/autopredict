@@ -69,13 +69,13 @@ No profile editor, model/tool controls, strategy categories, Preview UI, separat
   - Validation: Controlled browser sequences for queued/running/retrying/completed/failed, stable count denominators, one in-flight poll, slow/out-of-order replies, progress failure/retry, repeated terminal responses, reload/history return, response-loss recovery, no job cancellation on navigation and no fabricated Bet/profit values.
   - Completion notes: Fixed duplicate progress reads during StrictMode replay and terminal-refresh races that dismissed detail retry errors. Preserved server polling, recovery, and settlement guards. Whitespace check passed; browser/build verification awaits runner because Node is unavailable and Docker access is denied. No protected-file edits or Git mutations performed. Independent checks: Whitespace passed; Start sandbox database passed; Build current backend and fixture dependencies passed; Build shared isolated browser image passed; Frontend build and controlled browser regressions passed. Files: frontend/src/pages/RunsPage.tsx, frontend/tests/execution-progress.spec.ts, frontend/tests/runs.spec.ts, frontend/tests/settlement.spec.ts, progress/6_1_agent_strategy/front_end/plan.md, ralph/agent-strategy-frontend.progress.json. Logs: .git/ralph/2e21aa4abb5195e3/FE-03-004.*. Automated browser checks use controlled data. FE-05 additionally requires real API/worker execution in a generated disposable PostgreSQL database with fake model/search responses. Actual Ollama/DuckDuckGo behavior is not established by these checks.
 
-- [ ] FE-04 — Display saved Agent reasoning without changing financial history
-  - Status: not_started
+- [x] FE-04 — Display saved Agent reasoning without changing financial history
+  - Status: complete
   - Scope: Add expandable reasoning to Saved Bets; preserve existing snapshot, score, provenance, settlement and Run comparison displays for both strategy types.
   - Dependencies: FE-01, FE-03.
   - Acceptance criteria: Agent reasoning is readable plain text behind an accessible disclosure; Random and historical Bets omit it; saved names/role labels, Pacific kickoff, zero final scores, snapshot prices and P&L remain intact after reload/settlement. No new result/comparison page.
   - Validation: Playwright fixtures for null/blank/1,000-character/special-character reasoning, keyboard expand/collapse, screen-reader name, no HTML execution, team-side label mapping, long text/mobile overflow, immutable snapshots, settlement response reload and strategy labels in history. Preserve Saved Bets/settlement/dashboard regressions.
-  - Completion notes: Not implemented or validated.
+  - Completion notes: Implemented accessible, plain-text saved reasoning disclosures with 1,000-character limits and mobile wrapping. Added desktop/mobile regression coverage for keyboard access, HTML safety, settlement persistence, snapshots, and strategy labels. Whitespace checks passed; browser/build verification awaits the runner because Node is unavailable and Docker access is denied. No protected files or Git state changed. Independent checks: Whitespace passed; Start sandbox database passed; Build current backend and fixture dependencies passed; Build shared isolated browser image passed; Frontend build and controlled browser regressions passed. Files: frontend/src/pages/RunsPage.tsx, frontend/src/styles.css, frontend/tests/saved-reasoning.spec.ts, progress/6_1_agent_strategy/front_end/plan.md, ralph/agent-strategy-frontend.progress.json. Logs: .git/ralph/2e21aa4abb5195e3/FE-04-005.*. Automated browser checks use controlled data. FE-05 additionally requires real API/worker execution in a generated disposable PostgreSQL database with fake model/search responses. Actual Ollama/DuckDuckGo behavior is not established by these checks.
 
 - [ ] FE-05 — Prove the complete guided Random and Agent flows
   - Status: not_started
@@ -124,4 +124,11 @@ Backend BE-01–BE-07 supplies the durable runtime; frontend FE-01 → FE-02 →
 - Completed tasks: FE-03.
 - Validation: Whitespace passed; Start sandbox database passed; Build current backend and fixture dependencies passed; Build shared isolated browser image passed; Frontend build and controlled browser regressions passed.
 - Completion notes: Fixed duplicate progress reads during StrictMode replay and terminal-refresh races that dismissed detail retry errors. Preserved server polling, recovery, and settlement guards. Whitespace check passed; browser/build verification awaits runner because Node is unavailable and Docker access is denied. No protected-file edits or Git mutations performed.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
+
+### 2026-11-20 03:55 UTC — FE-04 Ralph execution
+
+- Completed tasks: FE-04.
+- Validation: Whitespace passed; Start sandbox database passed; Build current backend and fixture dependencies passed; Build shared isolated browser image passed; Frontend build and controlled browser regressions passed.
+- Completion notes: Implemented accessible, plain-text saved reasoning disclosures with 1,000-character limits and mobile wrapping. Added desktop/mobile regression coverage for keyboard access, HTML safety, settlement persistence, snapshots, and strategy labels. Whitespace checks passed; browser/build verification awaits the runner because Node is unavailable and Docker access is denied. No protected files or Git state changed.
 - Next: Continue the configured task sequence; live-provider verification remains separately reported.
