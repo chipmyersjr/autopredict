@@ -5,7 +5,8 @@ import type { Dashboard } from '../src/api/dashboard'
 const time = '2026-10-03T01:02:03+00:00'
 const run = {
   id: 'saved-run', user_id: 'user', strategy_id: 'shared', name: null, notes: null,
-  status: 'open', starting_bankroll: '100.00', stake_per_bet: '10.00', start_time: time,
+  status: 'open', execution_status: 'completed' as const, execution_started_at: time, execution_finished_at: time,
+  starting_bankroll: '100.00', stake_per_bet: '10.00', start_time: time,
   end_time: null, final_bankroll: null, total_profit: '-0.50', roi: '-0.0050',
   created_at: time, updated_at: time, game_ids: ['game'], bet_count: 4,
   committed_stake: '10.00', available_bankroll: '89.50', current_bankroll: '99.50',
@@ -14,7 +15,7 @@ const run = {
 }
 const bet = {
   id: 'bet', run_id: run.id, game_id: 'game', market_id: 'market', selection_id: 'selection',
-  side: 'Saved home', line: '-3.50', price: '1.9500', home_team: 'Saved home', away_team: 'Saved away',
+  side: 'Saved home', reasoning: null, line: '-3.50', price: '1.9500', home_team: 'Saved home', away_team: 'Saved away',
   kickoff_at_placement: time, stake: '10.00', status: 'won', result: 'won', profit: '9.50',
   placed_at: time, settled_at: time, created_at: time, updated_at: time,
   settlement_home_score: 31, settlement_away_score: 24, settlement_game_status: 'completed',

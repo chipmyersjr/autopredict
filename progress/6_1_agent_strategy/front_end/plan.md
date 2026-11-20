@@ -1,8 +1,8 @@
 # Design 6, part 1 — Agent Strategy frontend
 
-Area status: `not_started`
+Area status: `in_progress`
 
-Planning status: ready. Planning requested November 19, 2026; no implementation or browser validation performed.
+Planning status: ready. Current execution status and evidence are recorded in the task checklist and latest loop entries.
 
 ## Objective and governing design
 
@@ -45,13 +45,13 @@ No profile editor, model/tool controls, strategy categories, Preview UI, separat
 
 ## Tasks
 
-- [ ] FE-01 — Extend Run clients for Agent creation and persisted progress
-  - Status: not_started
+- [x] FE-01 — Extend Run clients for Agent creation and persisted progress
+  - Status: complete
   - Scope: Add Agent Strategy config types, execution/skip/reasoning response types, abortable progress GET and safe error labels; preserve creation identity and exact decimal fields; remove preview-client use.
   - Dependencies: Backend BE-06 API contract.
   - Acceptance criteria: Accepted empty-Bet response is valid; replay recovers the same Run; execution status is distinct from financial status; all new failures are readable without raw service details; no prediction outside final creation.
   - Validation: Type/build checks and intercepted browser contracts for 201/200, ownership/missing/invalid/inactive/conflict/database errors, response loss, exact request key/body preservation, progress schema, reasoning/null handling and abort behavior.
-  - Completion notes: Not implemented or validated.
+  - Completion notes: Extended Agent Run types, abortable progress reads, safe failure labels, and reasoning support; removed preview requests and adapted tests. Added intercepted client contracts. Whitespace check passed. Build/browser checks await runner verification because Node is unavailable and Docker access is denied. No protected-file edits or Git mutations performed. Independent checks: Whitespace passed; Start sandbox database passed; Build current backend and fixture dependencies passed; Build shared isolated browser image passed; Frontend build and controlled browser regressions passed. Files: frontend/src/api/runs.ts, frontend/src/api/strategies.ts, frontend/src/pages/GamesPage.tsx, frontend/src/pages/RunsPage.tsx, frontend/tests/agent-clients.spec.ts, frontend/tests/imported-spreads.spec.ts, frontend/tests/results-api.spec.ts, frontend/tests/runs.spec.ts, frontend/tests/strategies-live.spec.ts, frontend/tests/strategies.spec.ts, progress/6_1_agent_strategy/front_end/plan.md, ralph/agent-strategy-frontend.progress.json. Logs: .git/ralph/2e21aa4abb5195e3/FE-01-001.*. Automated browser checks use controlled data. FE-05 additionally requires real API/worker execution in a generated disposable PostgreSQL database with fake model/search responses. Actual Ollama/DuckDuckGo behavior is not established by these checks.
 
 - [ ] FE-02 — Replace preview and auto-selection with the guided creation flow
   - Status: not_started
@@ -104,3 +104,10 @@ Backend BE-01–BE-07 supplies the durable runtime; frontend FE-01 → FE-02 →
 - Completed task IDs: None; implementation statuses unchanged.
 - Decision: DuckDuckGo replaces hosted Ollama search behind the backend's existing tool interface. Frontend contracts and UI tasks are unchanged; no key-entry controls are needed.
 - Validation: Updated FE-05's manual-smoke wording to match the revised design/backend plan. No browser tests run for this documentation edit.
+
+### 2026-11-20 03:38 UTC — FE-01 Ralph execution
+
+- Completed tasks: FE-01.
+- Validation: Whitespace passed; Start sandbox database passed; Build current backend and fixture dependencies passed; Build shared isolated browser image passed; Frontend build and controlled browser regressions passed.
+- Completion notes: Extended Agent Run types, abortable progress reads, safe failure labels, and reasoning support; removed preview requests and adapted tests. Added intercepted client contracts. Whitespace check passed. Build/browser checks await runner verification because Node is unavailable and Docker access is denied. No protected-file edits or Git mutations performed.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.

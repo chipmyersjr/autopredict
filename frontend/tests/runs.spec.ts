@@ -237,16 +237,14 @@ test('stale detail reads cannot overwrite a newer view, and detail error can ret
   await expect(page.getByRole('region', { name: 'Saved Bets', exact: true })).toContainText('No Bets recorded')
   await expect(page.getByRole('heading', { name: 'Saved simulation' })).toHaveCount(0)
 })
-test('selection changes during creation preserve the submitted intent and preview remains usable', async ({ page }) => {
+test('selection changes during creation preserve the submitted intent without preview requests', async ({ page }) => {
   let submitted: unknown, release!: () => void
   const gate = new Promise<void>(resolve => { release = resolve })
   await page.route('**/api/runs', async r => { submitted = r.request().postDataJSON(); await gate; await r.fulfill({ json: result }) })
-  await page.route('**/decisions', r => r.fulfill({ json: { strategy_id: strategy.id, generated_at: run.start_time, decisions: [], skipped_games: [{ game_id: second, reason: 'spread_unavailable' }] } }))
   await page.goto('/'); await page.getByRole('checkbox').first().check()
   await page.getByRole('button', { name: 'Create Dry Run', exact: true }).click()
   await page.getByRole('checkbox').first().uncheck(); await page.getByRole('checkbox').nth(1).check()
-  await page.getByRole('button', { name: 'Preview decisions' }).click()
-  await expect(page.getByRole('region', { name: 'Decision preview', exact: true })).toContainText('all selected games were skipped')
+  await expect(page.getByRole('button', { name: 'Preview decisions' })).toHaveCount(0)
   expect(submitted).toMatchObject({ game_ids: [id] })
   expect(await page.evaluate(k => JSON.parse(sessionStorage.getItem(k)!).body.game_ids, storageKey)).toEqual([id])
   release(); await expect(page).toHaveURL(new RegExp(runId))

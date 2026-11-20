@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getGames, refreshGames } from '../api/games'
-import { getStrategies, previewDecisions } from '../api/strategies'
-import type { Strategy, Preview } from '../api/strategies'
+import { getStrategies } from '../api/strategies'
+import type { Strategy } from '../api/strategies'
 import type { Game } from '../api/games'
 import DryRunForm from '../components/DryRunForm'
 
@@ -78,11 +78,7 @@ export default function GamesPage() {
   const [strategyError, setStrategyError] = useState(false)
   const [strategyAttempt, setStrategyAttempt] = useState(0)
   const [selected, setSelected] = useState<string[]>([])
-  const [preview, setPreview] = useState<Preview | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [now, setNow] = useState(Date.now())
-  const pending = useRef<AbortController | null>(null)
   const refreshPending = useRef<AbortController | null>(null)
   const refreshButton = useRef<HTMLButtonElement>(null)
   const dialog = useRef<HTMLDialogElement>(null)
@@ -102,8 +98,7 @@ export default function GamesPage() {
       if (controller.signal.aborted) return
       setRefreshMessage(result.message)
       if (result.data_changed) {
-        pending.current?.abort(); pending.current = null
-        setBusy(false); setPreview(null); setError(null); setSelected([])
+        setSelected([])
         setAttempt(n => n + 1)
       }
     } catch {
@@ -117,7 +112,7 @@ export default function GamesPage() {
   }
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000)
-    return () => { clearInterval(timer); pending.current?.abort() }
+    return () => { clearInterval(timer) }
   }, [])
   useEffect(() => {
     const controller = new AbortController()
@@ -127,21 +122,7 @@ export default function GamesPage() {
   }, [strategyAttempt])
   const strategy = strategies?.find(s => s.id === '40000000-0000-4000-8000-000000000001')
   function toggle(id: string) {
-    pending.current?.abort(); pending.current = null; setBusy(false); setPreview(null); setError(null)
     setSelected(ids => ids.includes(id) ? ids.filter(item => item !== id) : [...ids, id])
-  }
-  async function execute() {
-    if (!strategy?.is_active || !selected.length || pending.current) return
-    const controller = new AbortController()
-    pending.current = controller; setBusy(true); setError(null); setPreview(null)
-    try {
-      const result = await previewDecisions(strategy.id, selected, controller.signal)
-      if (!controller.signal.aborted) setPreview(result)
-    } catch (failure) {
-      if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : 'Unable to generate decisions. Try again.')
-    } finally {
-      if (pending.current === controller) { pending.current = null; setBusy(false) }
-    }
   }
   useEffect(() => {
     const controller = new AbortController()
@@ -187,23 +168,9 @@ export default function GamesPage() {
       </div>}
       {state.status === 'success' && state.games.length > 0 && <section className="state-panel strategy-panel" aria-label="Random Strategy">
         <h2>Random Strategy</h2>
-        <p>Preview one randomly chosen spread per eligible game. The server checks eligibility when you execute.</p>
+        <p>Predictions start only after creating a Run. The server checks eligibility on submission.</p>
         {strategyError ? <><p role="alert">Strategies couldn’t be loaded.</p><button onClick={() => setStrategyAttempt(n => n + 1)}>Retry strategies</button></> : strategies === null ? <p>Loading strategy…</p> : !strategy ? <p>Random Strategy unavailable</p> : !strategy.is_active ? <p>Random Strategy inactive</p> : null}
         <p>{selected.length} games selected</p>
-        <button disabled={!selected.length || !strategy?.is_active || busy} onClick={execute}>{busy ? 'Generating decisions…' : 'Preview decisions'}</button>
-        {error && <p role="alert">{error}</p>}
-        <div aria-live="polite">{busy && <p>Generating decision preview…</p>}</div>
-        {preview && <section className="decision-results" aria-label="Decision preview">
-          <h2>Decision preview</h2>
-          <p>Generated <time dateTime={preview.generated_at}>{kickoffFormat.format(new Date(preview.generated_at))}</time>. No bets recorded.</p>
-          {!preview.decisions.length && <p>No eligible games — all selected games were skipped.</p>}
-          <ul>{preview.decisions.map(d => <li key={d.game_id}>
-            <p>{state.games.find(g => g.id === d.game_id)?.away_team} at {state.games.find(g => g.id === d.game_id)?.home_team}</p>
-            <strong>{teamLabel(state.games.find(g => g.id === d.game_id), d.side)} {formatLine(d.line)}</strong> · Decimal odds <strong>{d.price}</strong>
-            {d.quote_provenance && <p>Saved quote from {d.quote_provenance.bookmaker} · Fetched {d.quote_provenance.fetched_at}{d.quote_provenance.source_timestamp && ` · Source ${d.quote_provenance.source_timestamp}`}</p>}
-          </li>)}</ul>
-          <ul>{preview.skipped_games.map(skip => <li key={skip.game_id}>{state.games.find(g => g.id === skip.game_id)?.away_team} at {state.games.find(g => g.id === skip.game_id)?.home_team}: {{ game_not_scheduled: 'Game is not scheduled', kickoff_reached: 'Kickoff reached', spread_unavailable: 'Spread unavailable' }[skip.reason]}</li>)}</ul>
-        </section>}
       </section>}
       <DryRunForm selected={selected} strategyId={strategy?.id} enabled={Boolean(strategy?.is_active)} />
       {state.status === 'success' && (state.games.length === 0

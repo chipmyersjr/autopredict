@@ -1,12 +1,49 @@
 {
   "version": 1,
   "plan": "progress/6_1_agent_strategy/front_end/plan.md",
-  "area_status": "not_started",
+  "area_status": "in_progress",
   "tasks": {
-    "FE-01": {"title": "Extend Run clients for Agent creation and persisted progress", "status": "not_started"},
-    "FE-02": {"title": "Replace preview and auto-selection with the guided creation flow", "status": "not_started"},
-    "FE-03": {"title": "Add real persisted execution progress and recovery", "status": "not_started"},
-    "FE-04": {"title": "Display saved Agent reasoning without changing financial history", "status": "not_started"},
-    "FE-05": {"title": "Prove the complete guided Random and Agent flows", "status": "not_started"}
+    "FE-01": {
+      "title": "Extend Run clients for Agent creation and persisted progress",
+      "status": "complete",
+      "summary": "Extended Agent Run types, abortable progress reads, safe failure labels, and reasoning support; removed preview requests and adapted tests. Added intercepted client contracts. Whitespace check passed. Build/browser checks await runner verification because Node is unavailable and Docker access is denied. No protected-file edits or Git mutations performed.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build current backend and fixture dependencies passed",
+        "Build shared isolated browser image passed",
+        "Frontend build and controlled browser regressions passed"
+      ],
+      "files": [
+        "frontend/src/api/runs.ts",
+        "frontend/src/api/strategies.ts",
+        "frontend/src/pages/GamesPage.tsx",
+        "frontend/src/pages/RunsPage.tsx",
+        "frontend/tests/agent-clients.spec.ts",
+        "frontend/tests/imported-spreads.spec.ts",
+        "frontend/tests/results-api.spec.ts",
+        "frontend/tests/runs.spec.ts",
+        "frontend/tests/strategies-live.spec.ts",
+        "frontend/tests/strategies.spec.ts",
+        "progress/6_1_agent_strategy/front_end/plan.md",
+        "ralph/agent-strategy-frontend.progress.json"
+      ]
+    },
+    "FE-02": {
+      "title": "Replace preview and auto-selection with the guided creation flow",
+      "status": "not_started"
+    },
+    "FE-03": {
+      "title": "Add real persisted execution progress and recovery",
+      "status": "not_started"
+    },
+    "FE-04": {
+      "title": "Display saved Agent reasoning without changing financial history",
+      "status": "not_started"
+    },
+    "FE-05": {
+      "title": "Prove the complete guided Random and Agent flows",
+      "status": "not_started"
+    }
   }
 }

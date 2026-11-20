@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { getRun, getRunBets, getRuns, isUuid, RunApiError, settleRun } from '../api/runs'
+import { getRun, getRunBets, getRuns, isUuid, RunApiError, settleRun, skipReasonLabels } from '../api/runs'
 import type { Bet, Run } from '../api/runs'
 import { getStrategies } from '../api/strategies'
 import { formatLine } from './GamesPage'
@@ -13,7 +13,6 @@ const pacificKickoff = (value: string) => new Date(value).toLocaleString('en-US'
 })
 const savedSide = (bet: Bet) => bet.side === 'home' ? bet.home_team : bet.side === 'away' ? bet.away_team : bet.side
 const accountingState = (run: Run) => run.status === 'completed' ? 'Completed' : run.total_profit === null ? 'Pending results' : 'Partially settled'
-const skipLabels = { game_not_scheduled: 'Game is not scheduled', kickoff_reached: 'Kickoff reached', spread_unavailable: 'Spread unavailable' }
 function ErrorPanel({ message, retry }: { message: string; retry: () => void }) {
   return <div className="state-panel error-panel" role="alert"><p>{message}</p><button onClick={retry}>Retry</button>{' '}<a href="#/runs">Run history</a></div>
 }
@@ -110,7 +109,7 @@ export function RunDetail({ id }: { id: string }) {
       </section>
       <section className="state-panel" aria-label="Requested games"><h2>Requested games</h2><ol>{run.game_ids.map(gameId => {
         const bet = data.bets.find(b => b.game_id === gameId), skip = run.skipped_games.find(s => s.game_id === gameId)
-        return <li key={gameId}>{bet ? `${bet.away_team} at ${bet.home_team}` : gameId}{skip && ` — ${skipLabels[skip.reason]}`}</li>
+        return <li key={gameId}>{bet ? `${bet.away_team} at ${bet.home_team}` : gameId}{skip && ` — ${skipReasonLabels[skip.reason]}`}</li>
       })}</ol></section>
       <section className="state-panel" aria-label="Saved Bets"><h2>Saved Bets</h2><p>Execution snapshots are retained when current games or quotes change.</p>
         {!data.bets.length ? <p>No Bets recorded.</p> : <ul className="bet-list">{data.bets.map(bet => <li key={bet.id}><article>
