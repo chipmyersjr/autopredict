@@ -1,6 +1,6 @@
 # Design 6, part 1 — Agent Strategy backend
 
-Area status: `in_progress`
+Area status: `complete`
 
 Planning status: ready. Current execution status and evidence are recorded in the task checklist and latest loop entries.
 
@@ -107,13 +107,13 @@ These are implementation details under design 6, not a replacement product speci
   - Validation: HTTP contract tests for acceptance/replay/processing/partial/terminal failure, ownership/404/409/410/422/503, snapshot consistency, ordering, all Bet serializers and no inference during reads. Keep creation/ingress/settlement/dashboard regression coverage.
   - Completion notes: Implemented owner-scoped execution API, typed progress responses, retired preview with 410, and asynchronous Run/ reasoning regressions. Syntax and whitespace checks passed. Runtime tests require runner verification because Docker access is denied and local pytest is unavailable. Protected files and Git state were untouched. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: backend/app/routes.py, backend/app/schemas.py, backend/tests/test_execution_api.py, backend/tests/test_ingress_api.py, backend/tests/test_strategies.py, progress/6_1_agent_strategy/backend/plan.md, ralph/agent-strategy-backend.progress.json. Logs: .git/ralph/d796df80c525cf1e/BE-06-010.*. Automated verification uses disposable databases and controlled model/search responses. Actual local Ollama plus live DuckDuckGo verification is separate; no profitable-strategy claim or live-service verification is implied. Final cross-area browser proof belongs to FE-05.
 
-- [ ] BE-07 — Integrate worker startup and prove the backend handoff
-  - Status: not_started
+- [x] BE-07 — Integrate worker startup and prove the backend handoff
+  - Status: complete
   - Scope: Wire worker into existing Docker/Make lifecycle and seed startup; extend guarded disposable fixture support and concise operational documentation for local inference/keyless DuckDuckGo connectivity.
   - Dependencies: BE-01–BE-06.
   - Acceptance criteria: One normal app startup includes a persistent worker; controlled real-API Random and Agent Runs complete, replay, reopen and settle with correct accounting; worker restarts recover safely. Backend proof is independent of later FE-05 browser acceptance; label actual Ollama/search verification separately.
   - Validation: Full backend suite with RUN_POSTGRES_TESTS=1, disposable actual-HTTP acceptance with injected model/search stubs, Compose lifecycle, worker restart and database cleanup. Manual host-to-container local Ollama + keyless DuckDuckGo smoke when the local model and network are available; never claim mocks establish live service behavior or profitable predictions.
-  - Completion notes: Not implemented or validated.
+  - Completion notes: Integrated durable worker startup, opt-in controlled fixture worker with restart/cleanup, HTTP handoff coverage, and concise documentation. Local checks: 23 tests passed; syntax and whitespace passed. PostgreSQL/Compose verification awaits runner because Docker access is denied; SDK dependencies were unavailable locally. No live-provider or browser verification claimed. No Git operations or protected-file edits performed. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: .env.example, Makefile, README.md, backend/tests/test_resolution_handoff.py, docker-compose.yml, frontend/tests/support/live_backend.py, progress/6_1_agent_strategy/backend/plan.md, ralph/agent-strategy-backend.progress.json. Logs: .git/ralph/d796df80c525cf1e/BE-07-011.*. Automated verification uses disposable databases and controlled model/search responses. Actual local Ollama plus live DuckDuckGo verification is separate; no profitable-strategy claim or live-service verification is implied. Final cross-area browser proof belongs to FE-05.
 
 ## Execution order and completion criteria
 
@@ -176,4 +176,11 @@ BE-01 → BE-02 → BE-03 → BE-04 → BE-05 → BE-06 → BE-07. FE-01 may imp
 - Completed tasks: BE-06.
 - Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
 - Completion notes: Implemented owner-scoped execution API, typed progress responses, retired preview with 410, and asynchronous Run/ reasoning regressions. Syntax and whitespace checks passed. Runtime tests require runner verification because Docker access is denied and local pytest is unavailable. Protected files and Git state were untouched.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
+
+### 2026-11-20 03:33 UTC — BE-07 Ralph execution
+
+- Completed tasks: BE-07.
+- Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
+- Completion notes: Integrated durable worker startup, opt-in controlled fixture worker with restart/cleanup, HTTP handoff coverage, and concise documentation. Local checks: 23 tests passed; syntax and whitespace passed. PostgreSQL/Compose verification awaits runner because Docker access is denied; SDK dependencies were unavailable locally. No live-provider or browser verification claimed. No Git operations or protected-file edits performed.
 - Next: Continue the configured task sequence; live-provider verification remains separately reported.

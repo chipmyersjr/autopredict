@@ -1,5 +1,6 @@
 """Disposable PostgreSQL-backed browser server; never touches development fixtures."""
 import argparse
+import asyncio
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import json
@@ -8,6 +9,7 @@ import signal
 import re
 from pathlib import Path
 import sys
+import multiprocessing
 from uuid import UUID, uuid4
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -20,16 +22,133 @@ from app.database import create_database_engine
 from app.models import Bet, Game, Run, RunGame, Selection, Market
 from app.ingress import current_week
 from app.seed import demo_games, seed_demo
-from app.seed_strategy import seed_strategy
+from app.seed_strategy import seed_strategy, seed_agent_strategy
 from app.seed_user import seed_user
 from app.settings import Settings
 
 
-def guarded_engine(metadata):
-    database = json.loads(metadata.read_text())['database']
+def fixture_worker(database, ready):
+    """Production execution loop; only external transports are test doubles."""
+    import httpx
+    from app.agent_services import DuckDuckGoSearch, local_model_client
+    from app.predictors import get_predictor
+    from app.run_worker import serve
+
+    class Search:
+        def __init__(self, *, timeout):
+            assert timeout == 10
+
+        def text(self, query, *, backend, max_results):
+            assert backend == 'duckduckgo' and max_results == 5
+            return [dict(title='Fictional fixture evidence', href='https://example.test/football',
+                         body='Controlled fictional teams have comparable recent form.')]
+
+    async def chat(request):
+        body = json.loads(request.content)
+        # Keep processing observable for close/reopen and worker restart checks.
+        await asyncio.sleep(.3)
+        messages = body['messages']
+        if messages[-1]['role'] != 'tool':
+            message = dict(role='assistant', content='', tool_calls=[dict(function=dict(
+                name='web_search', arguments={'query': 'fictional football form'}))])
+        else:
+            context = json.loads(messages[1]['content'])
+            message = dict(role='assistant', content=json.dumps(dict(
+                selection_id=context['selections'][0]['selection_id'],
+                reasoning='Controlled fictional research supports this saved spread selection.')))
+        return httpx.Response(200, json=dict(model='fixture-model', message=message, done=True))
+
+    engine = guarded_engine_from_database(database)
+    async def run():
+        settings = Settings(_env_file=None, postgres_db=database,
+                            ollama_host='http://fixture.invalid', ollama_model='fixture-model')
+        search = DuckDuckGoSearch(factory=Search)
+        try:
+            async with local_model_client(settings, transport=httpx.MockTransport(chat)) as client:
+                with engine.connect() as connection:
+                    connection.execute(text('SELECT 1 FROM runs LIMIT 1'))
+                ready.send(True)
+                ready.close()
+                await serve(engine, lambda kind, config: get_predictor(
+                    kind, config, client=client, search=search, model=settings.ollama_model))
+        finally:
+            await search.aclose()
+    try:
+        asyncio.run(run())
+    finally:
+        engine.dispose()
+
+
+def guarded_engine_from_database(database):
     if not re.fullmatch(r'autopredict_browser_[0-9a-f]{32}', database):
         raise ValueError('Only generated browser databases may be mutated')
     return create_database_engine(Settings(_env_file=None, postgres_db=database))
+
+
+def guarded_engine(metadata):
+    database = json.loads(metadata.read_text())['database']
+    return guarded_engine_from_database(database)
+
+
+async def serve_fixture(args, database):
+    import uvicorn
+    context = multiprocessing.get_context('spawn')
+    worker = None
+    server = uvicorn.Server(uvicorn.Config('app.main:app', host='127.0.0.1',
+                                         port=args.port, log_level='warning'))
+
+    async def start_worker():
+        nonlocal worker
+        receiver, sender = context.Pipe(duplex=False)
+        worker = context.Process(target=fixture_worker, args=(database, sender))
+        worker.start()
+        sender.close()
+        try:
+            deadline = asyncio.get_running_loop().time() + 20
+            while not receiver.poll():
+                if not worker.is_alive() or asyncio.get_running_loop().time() > deadline:
+                    raise RuntimeError('Fixture worker failed readiness')
+                await asyncio.sleep(.05)
+            assert receiver.recv() is True
+        finally:
+            receiver.close()
+
+    def publish():
+        temporary = args.metadata.with_suffix(args.metadata.suffix + '.tmp')
+        temporary.write_text(json.dumps(dict(database=database, pid=os.getpid(),
+            worker_pid=worker.pid if worker else None)))
+        temporary.replace(args.metadata)
+
+    api = None
+    try:
+        if args.agent_worker:
+            await start_worker()
+        api = asyncio.create_task(server.serve())
+        while not server.started:
+            if api.done():
+                await api
+                raise RuntimeError('Fixture API failed readiness')
+            await asyncio.sleep(.05)
+        publish()
+        print('Disposable browser backend ready', flush=True)
+        while not api.done():
+            if worker and not worker.is_alive():
+                worker.join()
+                await start_worker()
+                publish()
+            await asyncio.sleep(.1)
+        await api
+    finally:
+        server.should_exit = True
+        if api and not api.done():
+            await api
+        if worker:
+            if worker.is_alive():
+                worker.terminate()
+            await asyncio.to_thread(worker.join, 10)
+            if worker.is_alive():
+                worker.kill()
+                worker.join()
 
 
 def run_games(session, run_id):
@@ -104,6 +223,8 @@ def main():
     parser.add_argument('--metadata', type=Path, required=True)
     parser.add_argument('--port', type=int, default=8017)
     parser.add_argument('--origin', default='http://127.0.0.1:5187')
+    parser.add_argument('--agent-worker', action='store_true',
+                        help='Run the durable worker with controlled local model/search transports')
     parser.add_argument('--mutate-run')
     parser.add_argument('--restore-run')
     parser.add_argument('--inspect-run')
@@ -130,7 +251,6 @@ def main():
     if args.mutate_run:
         mutate(args.metadata, args.mutate_run)
         return
-    import uvicorn
     # Uvicorn replays termination signals after shutdown. Convert that replay
     # to an exception so the outer finally always removes the test database.
     def terminate(signum, frame):
@@ -159,10 +279,9 @@ def main():
                     selection.price = Decimal('1.9500')
         seed_demo(engine, games)
         seed_strategy(engine)
+        seed_agent_strategy(engine)
         seed_user(engine)
-        args.metadata.write_text(json.dumps({'database': database, 'pid': os.getpid()}))
-        print('Disposable browser backend ready', flush=True)
-        uvicorn.run('app.main:app', host='127.0.0.1', port=args.port, log_level='warning')
+        asyncio.run(serve_fixture(args, database))
     finally:
         if engine:
             engine.dispose()

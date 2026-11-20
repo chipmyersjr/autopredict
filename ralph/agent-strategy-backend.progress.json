@@ -1,7 +1,7 @@
 {
   "version": 1,
   "plan": "progress/6_1_agent_strategy/backend/plan.md",
-  "area_status": "in_progress",
+  "area_status": "complete",
   "tasks": {
     "BE-01": {
       "title": "Add Agent Strategy and durable execution persistence",
@@ -129,7 +129,24 @@
     },
     "BE-07": {
       "title": "Integrate worker startup and prove the backend handoff",
-      "status": "not_started"
+      "status": "complete",
+      "summary": "Integrated durable worker startup, opt-in controlled fixture worker with restart/cleanup, HTTP handoff coverage, and concise documentation. Local checks: 23 tests passed; syntax and whitespace passed. PostgreSQL/Compose verification awaits runner because Docker access is denied; SDK dependencies were unavailable locally. No live-provider or browser verification claimed. No Git operations or protected-file edits performed.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build backend dependencies passed",
+        "Backend regressions with disposable PostgreSQL databases passed"
+      ],
+      "files": [
+        ".env.example",
+        "Makefile",
+        "README.md",
+        "backend/tests/test_resolution_handoff.py",
+        "docker-compose.yml",
+        "frontend/tests/support/live_backend.py",
+        "progress/6_1_agent_strategy/backend/plan.md",
+        "ralph/agent-strategy-backend.progress.json"
+      ]
     }
   }
 }

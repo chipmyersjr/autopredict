@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import signal
 import subprocess
 import sys
 import time
@@ -38,7 +39,8 @@ def test_mutation_guard_before_connection(tmp_path, monkeypatch, database):
         fixture.finalize(metadata, str(uuid4()), {})
 
 
-def test_http_resolution_handoff(tmp_path):
+@pytest.mark.parametrize('kind,worker', [('random', False), ('random', True), ('agent', True)])
+def test_http_resolution_handoff(tmp_path, kind, worker):
     if os.environ.get('RUN_POSTGRES_TESTS') != '1':
         pytest.skip('Set RUN_POSTGRES_TESTS=1 for disposable PostgreSQL tests')
     metadata = tmp_path / 'backend.json'
@@ -50,8 +52,10 @@ def test_http_resolution_handoff(tmp_path):
            'PYTHONDONTWRITEBYTECODE': '1'}
     base = [sys.executable, str(HELPER), '--metadata', str(metadata)]
     database = None
+    worker_pids = set()
     with (tmp_path / 'server.log').open('w+') as log:
-        process = subprocess.Popen(base + ['--port', str(port), '--origin', 'http://127.0.0.1:5187'],
+        process = subprocess.Popen(base + ['--port', str(port), '--origin', 'http://127.0.0.1:5187']
+                                   + (['--agent-worker'] if worker else []),
                                    env=env, stdout=log, stderr=log)
         try:
             with httpx.Client(base_url=f'http://127.0.0.1:{port}', timeout=5) as client:
@@ -68,9 +72,11 @@ def test_http_resolution_handoff(tmp_path):
                     assert time.monotonic() < deadline, 'Fixture readiness timed out'
                     time.sleep(.1)
                 database = json.loads(metadata.read_text())['database']
+                if worker:
+                    worker_pids.add(json.loads(metadata.read_text())['worker_pid'])
                 games = client.get('/api/games?window=current').json()
                 assert len(games) == 5
-                strategy = client.get('/api/strategies').json()[0]
+                strategy = next(s for s in client.get('/api/strategies').json() if s['type'] == kind)
                 payload = dict(strategy_id=strategy['id'], game_ids=[g['id'] for g in games],
                                starting_bankroll='100.00', stake_per_bet='10.00')
                 headers = {'Idempotency-Key': str(uuid4())}
@@ -78,17 +84,48 @@ def test_http_resolution_handoff(tmp_path):
                 assert response.status_code == 201, response.text
                 saved = response.json()
                 assert saved['run']['execution_status'] == 'queued' and saved['bets'] == []
-                assert client.post('/api/runs/'+saved['run']['id']+'/settle').status_code == 409
-                engine = fixture.guarded_engine(metadata)
-                try:
-                    from test_runs import drain
-                    drain(engine)
-                finally:
-                    engine.dispose()
+                if not worker:
+                    assert client.post('/api/runs/'+saved['run']['id']+'/settle').status_code == 409
+                    engine = fixture.guarded_engine(metadata)
+                    try:
+                        from test_runs import drain
+                        drain(engine)
+                    finally:
+                        engine.dispose()
+                else:
+                    if kind == 'agent':
+                        # Terminate during a committed attempt, then let the fixture
+                        # restart the production worker against the same database.
+                        deadline = time.monotonic() + 20
+                        while True:
+                            progress = client.get('/api/runs/'+saved['run']['id']+'/execution').json()
+                            if any(g['state'] == 'analysing' for g in progress['games']):
+                                break
+                            assert time.monotonic() < deadline
+                            time.sleep(.05)
+                        assert client.post('/api/runs/'+saved['run']['id']+'/settle').status_code == 409
+                        old_pid = json.loads(metadata.read_text())['worker_pid']
+                        os.kill(old_pid, signal.SIGTERM)
+                        while json.loads(metadata.read_text())['worker_pid'] == old_pid:
+                            assert time.monotonic() < deadline
+                            time.sleep(.1)
+                        worker_pids.add(json.loads(metadata.read_text())['worker_pid'])
+                    deadline = time.monotonic() + 30
+                    while True:
+                        progress = client.get('/api/runs/'+saved['run']['id']+'/execution').json()
+                        assert progress['completed_games'] <= progress['total_games']
+                        assert all(g['attempts'] <= 2 for g in progress['games'])
+                        if progress['status'] in ('completed', 'failed'):
+                            assert progress['status'] == 'completed', progress
+                            break
+                        assert time.monotonic() < deadline
+                        time.sleep(.1)
                 saved = client.post('/api/runs', json=payload, headers=headers).json()
                 assert saved['run']['execution_status'] == 'completed'
                 bets = saved['bets']
                 assert len(bets) == 4
+                assert len({b['game_id'] for b in bets}) == 4
+                assert all(bool(b['reasoning']) == (kind == 'agent') for b in bets)
                 assert all(b['line'] == '0.00' and b['price'] == '1.9500' for b in bets)
                 path = '/api/runs/' + saved['run']['id']
                 assert client.post(path + '/settle').json()['settled_bet_ids'] == []
@@ -181,6 +218,9 @@ def test_http_resolution_handoff(tmp_path):
                 process.wait()
                 pytest.fail('Fixture did not cleanly terminate')
         assert not metadata.exists()
+        for pid in worker_pids:
+            with pytest.raises(ProcessLookupError):
+                os.kill(pid, 0)
         admin = create_engine(Settings(_env_file=None).database_url.set(database='postgres'))
         try:
             with admin.connect() as connection:

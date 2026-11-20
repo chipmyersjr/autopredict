@@ -52,6 +52,16 @@ services:
       - -ec
       - alembic upgrade head && python -m app.seed && python -m app.seed_strategy && python -m app.seed_user
 
+  worker:
+    <<: *backend
+    ports: []
+    command: ["python", "-m", "app.run_worker"]
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      disable: true
+
   frontend:
     build:
       context: .

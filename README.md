@@ -1,6 +1,6 @@
 # AutoPredict
 
-AutoPredict is a college football betting simulator for testing strategies with theoretical bets. View stored games and spreads, run the Random Strategy, and inspect saved simulations and bet history.
+AutoPredict is a college football betting simulator for testing Random and Agent strategies with theoretical bets, saved simulations and bet history.
 
 ## Run locally
 
@@ -14,14 +14,14 @@ To use a private settings file outside the project, run `export ENV_FILE="$HOME/
 
 | Command | What it does |
 | --- | --- |
-| `make build` / `make up` | Build images, start PostgreSQL, apply migrations, seed demo data, and start both apps. |
+| `make build` / `make up` | Build images, start PostgreSQL, migrate/seed both strategies, and start apps and the durable worker. |
 | `make dev` | Start previously built containers without running migrations or seeds. |
 | `make down` | Stop all services and preserve database data. |
 | `make logs` | Follow service logs; Ctrl+C exits logs without stopping services. |
 | `make status` | Show container status and health. |
 | `make db` | Start PostgreSQL only. |
 | `make migrate` | Apply database migrations after the initial build. |
-| `make seed` | Load demo games, the Random Strategy, and the local user after the initial build; preserve existing records. |
+| `make seed` | Load demo games, both strategies, and the local user; preserve existing records. |
 | `make help` | List common commands. |
 | `make ralph-preview` / `make ralph` | Preview or run the verified task loop; see [Ralph instructions](ralph/README.md). |
 
@@ -31,6 +31,20 @@ To use a private settings file outside the project, run `export ENV_FILE="$HOME/
 - [Swagger API docs](http://127.0.0.1:8000/docs)
 
 ## Settlement handoff
+
+Run creation accepts durable work: POST returns a queued Run with empty Bets.
+Replay the same creation key to recover it; poll `GET /api/runs/{id}/execution`
+and reload Run/Bets after terminal execution. Both strategies use the worker;
+pending/failed execution cannot settle. The old decisions preview returns 410.
+
+Agent inference uses native Ollama at `OLLAMA_HOST` (default
+`http://host.docker.internal:11434`) and `OLLAMA_MODEL` (default `gpt-oss:20b`).
+Install/start the model separately on the host; the app never pulls models.
+The worker needs access to that host port and outbound DuckDuckGo HTTPS for
+keyless research (explicit `ddgs` DuckDuckGo backend). No inference/search key
+is required. Restart the worker after changing settings. Actual local-model and
+DuckDuckGo connectivity smoke remains unperformed; controlled tests establish
+neither live service availability nor prediction profitability.
 
 Send `POST /api/runs/{id}/settle` with no body to resolve saved Bets against
 stored completed games with final scores; canceled games void Bets. This never
@@ -60,6 +74,14 @@ win/loss scores; equal scores push these zero lines. `--mutate-run RUN_UUID`
 still changes current labels/quotes and moves games into history for snapshot
 checks. Neither helper writes Bet outcomes or exposes a production score API.
 Remove caller-created results files afterward; never use development records.
+
+Add `--agent-worker` to start the production durable worker with injected native
+Ollama mock transport and controlled DuckDuckGo responses. Readiness is reported
+only after API and worker startup; metadata includes `worker_pid`. Terminating
+that child exercises restart/recovery against the same disposable database.
+Fixture exit stops its worker and API and drops the generated database. Without
+the option, existing fixture behavior is preserved. FE-05 browser acceptance
+remains pending; backend HTTP tests do not establish browser acceptance.
 
 `RUN_POSTGRES_TESTS=1` enables the backend regression suite, including a real
 HTTP create/finalize/settle/reload test and fixture cleanup checks. Final browser
