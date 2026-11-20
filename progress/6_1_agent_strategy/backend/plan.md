@@ -75,13 +75,13 @@ These are implementation details under design 6, not a replacement product speci
   - Validation: Mocked local client and DDGS adapter tests for transport/header/timeouts, exact backend selection, query validation, normalization, empty/malformed results, throttling/blocking, cancellation and credential isolation; profile lookup/path rejection, resource cleanup, idempotent seeds and Docker packaging. No actual model pull, search call or key required for automated tests.
   - Completion notes: Reviewed the preserved implementation against BE-02 and governing designs; no remaining acceptance gaps found. Whitespace check passed. Recovery feedback reports 392 backend tests and Docker build passed. Local rerun was unavailable due to Docker permissions and an unusable virtualenv. No live provider calls, file edits, or Git mutations performed; ready for runner verification. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: .env.example, backend/app/agent_profiles/FootballAnalysisExpert.md, backend/app/agent_profiles/__init__.py, backend/app/agent_services.py, backend/app/seed_strategy.py, backend/app/settings.py, backend/pyproject.toml, backend/tests/test_agent_services.py, backend/tests/test_settings.py, backend/uv.lock, progress/6_1_agent_strategy/backend/plan.md, ralph/agent-strategy-backend.progress.json. Logs: .git/ralph/d796df80c525cf1e/BE-02-004.*. Automated verification uses disposable databases and controlled model/search responses. Actual local Ollama plus live DuckDuckGo verification is separate; no profitable-strategy claim or live-service verification is implied. Final cross-area browser proof belongs to FE-05.
 
-- [ ] BE-03 — Implement shared predictors and the bounded Agent tool loop
-  - Status: not_started
+- [x] BE-03 — Implement shared predictors and the bounded Agent tool loop
+  - Status: complete
   - Scope: Add registry/protocol, Random adapter and generic Agent predictor using the registered profile and native chat/search loop.
   - Dependencies: BE-02.
   - Acceptance criteria: Both return the same typed selection decision; Agent reasoning is concise and valid; autonomous tool exchanges are bounded; selection/line/price/provenance cannot be fabricated; no random fallback or cross-game state leakage.
   - Validation: Deterministic Random injection, multi-turn/multiple-tool mocked exchanges, bad tool arguments, unknown tools, search errors/rate limits/blocking/empty results, unavailable model, deadlines/budget exhaustion, invalid JSON/foreign IDs/blank or overlong reasoning, malicious retrieved instructions and clean failure classifications.
-  - Completion notes: Not implemented or validated.
+  - Completion notes: Implemented shared predictors, bounded Agent tool exchanges, captured-selection resolution, and fake-based tests. All 20 runnable predictor tests and whitespace checks passed. Native SDK verification requires runner-installed ollama dependencies; full regressions remain for the runner. Protected files and Git state were untouched. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: backend/app/predictors.py, backend/tests/test_predictors.py, progress/6_1_agent_strategy/backend/plan.md, ralph/agent-strategy-backend.progress.json. Logs: .git/ralph/d796df80c525cf1e/BE-03-006.*. Automated verification uses disposable databases and controlled model/search responses. Actual local Ollama plus live DuckDuckGo verification is separate; no profitable-strategy claim or live-service verification is implied. Final cross-area browser proof belongs to FE-05.
 
 - [ ] BE-04 — Build durable Run claims, progress and restart recovery
   - Status: not_started
@@ -148,4 +148,11 @@ BE-01 → BE-02 → BE-03 → BE-04 → BE-05 → BE-06 → BE-07. FE-01 may imp
 - Completed tasks: BE-02.
 - Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
 - Completion notes: Reviewed the preserved implementation against BE-02 and governing designs; no remaining acceptance gaps found. Whitespace check passed. Recovery feedback reports 392 backend tests and Docker build passed. Local rerun was unavailable due to Docker permissions and an unusable virtualenv. No live provider calls, file edits, or Git mutations performed; ready for runner verification.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
+
+### 2026-11-20 02:58 UTC — BE-03 Ralph execution
+
+- Completed tasks: BE-03.
+- Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
+- Completion notes: Implemented shared predictors, bounded Agent tool exchanges, captured-selection resolution, and fake-based tests. All 20 runnable predictor tests and whitespace checks passed. Native SDK verification requires runner-installed ollama dependencies; full regressions remain for the runner. Protected files and Git state were untouched.
 - Next: Continue the configured task sequence; live-provider verification remains separately reported.

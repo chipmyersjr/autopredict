@@ -50,7 +50,20 @@
     },
     "BE-03": {
       "title": "Implement shared predictors and the bounded Agent tool loop",
-      "status": "not_started"
+      "status": "complete",
+      "summary": "Implemented shared predictors, bounded Agent tool exchanges, captured-selection resolution, and fake-based tests. All 20 runnable predictor tests and whitespace checks passed. Native SDK verification requires runner-installed ollama dependencies; full regressions remain for the runner. Protected files and Git state were untouched.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build backend dependencies passed",
+        "Backend regressions with disposable PostgreSQL databases passed"
+      ],
+      "files": [
+        "backend/app/predictors.py",
+        "backend/tests/test_predictors.py",
+        "progress/6_1_agent_strategy/backend/plan.md",
+        "ralph/agent-strategy-backend.progress.json"
+      ]
     },
     "BE-04": {
       "title": "Build durable Run claims, progress and restart recovery",
