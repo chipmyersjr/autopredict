@@ -11,6 +11,7 @@ export { formatLine } from '../format'
 const kickoffFormat = new Intl.DateTimeFormat(undefined, {
   weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
   hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+  timeZone: 'America/Los_Angeles',
 })
 function teamLabel(game: Game | undefined, side: string): string {
   if (side === 'home') return game?.home_team ?? side
@@ -62,6 +63,7 @@ function GameCard({ game, selected, toggle, now }: { game: Game; selected: boole
                 <span className="selection-team">{teamLabel(game, selection.side)}</span>
                 <strong className="line">{formatLine(selection.line!)}</strong>
                 <span className="price">Decimal odds <strong>{selection.price}</strong></span>
+                {selection.quote_provenance && <span>Bookmaker: {selection.quote_provenance.bookmaker} · Saved {kickoffFormat.format(new Date(selection.quote_provenance.fetched_at))}</span>}
               </li>
             ))}</ul>
           </section>
@@ -78,6 +80,11 @@ export default function GamesPage() {
   const [strategyError, setStrategyError] = useState(false)
   const [strategyAttempt, setStrategyAttempt] = useState(0)
   const [selected, setSelected] = useState<string[]>([])
+  const [strategyId, setStrategyId] = useState<string>()
+  const [step, setStep] = useState<'strategy' | 'games' | 'finalize'>('strategy')
+  const [pending, setPending] = useState(false)
+  const initialized = useRef(false)
+  const [reviewChanged, setReviewChanged] = useState(false)
   const [now, setNow] = useState(Date.now())
   const refreshPending = useRef<AbortController | null>(null)
   const refreshButton = useRef<HTMLButtonElement>(null)
@@ -98,7 +105,7 @@ export default function GamesPage() {
       if (controller.signal.aborted) return
       setRefreshMessage(result.message)
       if (result.data_changed) {
-        setSelected([])
+        setReviewChanged(true)
         setAttempt(n => n + 1)
       }
     } catch {
@@ -120,7 +127,7 @@ export default function GamesPage() {
     getStrategies(controller.signal).then(items => { if (!controller.signal.aborted) setStrategies(items) }).catch(() => { if (!controller.signal.aborted) setStrategyError(true) })
     return () => controller.abort()
   }, [strategyAttempt])
-  const strategy = strategies?.find(s => s.id === '40000000-0000-4000-8000-000000000001')
+  const strategy = strategies?.find(s => s.id === strategyId && s.is_active)
   function toggle(id: string) {
     setSelected(ids => ids.includes(id) ? ids.filter(item => item !== id) : [...ids, id])
   }
@@ -128,12 +135,30 @@ export default function GamesPage() {
     const controller = new AbortController()
     setState({ status: 'loading' })
     getGames(controller.signal, 'current').then(games => {
-      if (!controller.signal.aborted) setState({ status: 'success', games })
+      if (!controller.signal.aborted) {
+        if (!initialized.current) {
+          // An empty week may later acquire games through explicit Refresh.
+          if (games.length) {
+            setSelected(games.filter(game => !unavailableReason(game)).map(game => game.id))
+            initialized.current = true
+          }
+        } else setSelected(ids => ids.filter(id => games.some(game => game.id === id && !unavailableReason(game))))
+        setState({ status: 'success', games })
+      }
     }).catch(() => {
       if (!controller.signal.aborted) setState({ status: 'error' })
     })
     return () => controller.abort()
   }, [attempt])
+  useEffect(() => {
+    if (state.status !== 'success') return
+    const eligible = new Set(state.games.filter(game => !unavailableReason(game, now)).map(game => game.id))
+    if (selected.some(id => !eligible.has(id))) {
+      setSelected(ids => ids.filter(id => eligible.has(id)))
+      setReviewChanged(true)
+    }
+  }, [now, state, selected])
+  const eligibleSelected = state.status === 'success' ? selected.filter(id => state.games.some(game => game.id === id && !unavailableReason(game, now))) : []
   return (
     <main>
       <header className="page-header">
@@ -159,23 +184,48 @@ export default function GamesPage() {
       </dialog>
       <div role="status" aria-live="polite">
         {state.status === 'loading' && <p className="state-panel">Loading games…</p>}
-        {state.status === 'success' && <p className="results-summary">{state.games.length} {state.games.length === 1 ? 'game' : 'games'} · Kickoff times in your local timezone ({Intl.DateTimeFormat().resolvedOptions().timeZone})</p>}
+        {state.status === 'success' && <p className="results-summary">{state.games.length} {state.games.length === 1 ? 'game' : 'games'} · Kickoff times in Pacific time</p>}
       </div>
       {state.status === 'error' && <div className="state-panel error-panel" role="alert">
         <h2>Games couldn’t be loaded</h2>
         <p>Check that the backend is running, then try again.</p>
         <button onClick={() => { setState({ status: 'loading' }); setAttempt(n => n + 1) }}>Retry</button>
       </div>}
-      {state.status === 'success' && state.games.length > 0 && <section className="state-panel strategy-panel" aria-label="Random Strategy">
-        <h2>Random Strategy</h2>
-        <p>Predictions start only after creating a Run. The server checks eligibility on submission.</p>
-        {strategyError ? <><p role="alert">Strategies couldn’t be loaded.</p><button onClick={() => setStrategyAttempt(n => n + 1)}>Retry strategies</button></> : strategies === null ? <p>Loading strategy…</p> : !strategy ? <p>Random Strategy unavailable</p> : !strategy.is_active ? <p>Random Strategy inactive</p> : null}
-        <p>{selected.length} games selected</p>
+      <p aria-label="Run creation steps">1 · Strategy → 2 · Games → 3 · Finalize</p>
+      <fieldset disabled={pending} className="creation-controls">
+      {step === 'strategy' && <section className="state-panel strategy-panel" aria-label="Choose a strategy">
+        <h2>1 · Choose a strategy</h2>
+        <p>Choose a shared Strategy. Predictions start only after final submission.</p>
+        {strategyError ? <><p role="alert">Strategies couldn’t be loaded.</p><button onClick={() => setStrategyAttempt(n => n + 1)}>Retry strategies</button></> : strategies === null ? <p>Loading strategies…</p> : <>
+          {!strategies.some(s => s.is_active) && <p>No active strategies available.</p>}
+          <div className="strategy-options" role="radiogroup" aria-label="Strategy">
+            {strategies.map(item => <label className="strategy-option" key={item.id}>
+              <input type="radio" name="strategy" value={item.id} checked={strategyId === item.id} disabled={!item.is_active} onChange={() => setStrategyId(item.id)} />
+              <strong>{item.name}</strong><span>{item.description}</span>{!item.is_active && <span>Inactive</span>}
+            </label>)}
+          </div>
+        </>}
+        <button disabled={!strategy} onClick={() => setStep('games')}>Continue to Games</button>
       </section>}
-      <DryRunForm selected={selected} strategyId={strategy?.id} enabled={Boolean(strategy?.is_active)} />
+      {step !== 'strategy' && <section className="state-panel" aria-label="Select games">
+        <h2>2 · Select games</h2>
+        <p>Strategy: {strategy?.name ?? 'Unavailable'} · {eligibleSelected.length} games selected</p>
+        <button className="secondary" onClick={() => setStep('strategy')}>Back to Strategy</button>{' '}
+        <button disabled={state.status !== 'success'} onClick={() => {
+          if (state.status === 'success') setSelected(state.games.filter(game => !unavailableReason(game, now)).map(game => game.id))
+        }}>Select All eligible games</button>{' '}
+        <button disabled={!strategy || !eligibleSelected.length || state.status !== 'success' || refreshing || reviewChanged} onClick={() => setStep('finalize')}>Continue to Finalize</button>
+      </section>}
+      {reviewChanged && <div className="state-panel" role="status"><p>Saved games or odds changed. Unavailable or missing games were removed from your selection. Review the current games before submitting.</p><button onClick={() => { setStep('games'); setReviewChanged(false) }}>Review updated games</button></div>}
+      </fieldset>
+      <DryRunForm selected={eligibleSelected} strategyId={strategy?.id} enabled={Boolean(strategy) && state.status === 'success' && !refreshing && !reviewChanged}
+        visible={step === 'finalize'} onPending={setPending} onBack={() => setStep('games')}
+        review={<><p>Strategy: <strong>{strategy?.name ?? 'Unavailable'}</strong></p><ul>{state.status === 'success' && state.games.filter(game => eligibleSelected.includes(game.id)).map(game => <li key={game.id}>{game.away_team} at {game.home_team} · {kickoffFormat.format(new Date(game.start_time))}</li>)}</ul></>} />
+      <fieldset disabled={pending} className="creation-controls">
       {state.status === 'success' && (state.games.length === 0
         ? <div className="state-panel"><h2>No games stored yet</h2><p>No games stored for this week. Use Refresh to load this week’s FBS games.</p></div>
-        : <ul className="games-list">{state.games.map(game => <li key={game.id}><GameCard game={game} selected={selected.includes(game.id)} toggle={() => toggle(game.id)} now={now} /></li>)}</ul>)}
+        : <ul className="games-list">{state.games.map(game => <li key={game.id}><GameCard game={game} selected={eligibleSelected.includes(game.id)} toggle={() => toggle(game.id)} now={now} /></li>)}</ul>)}
+      </fieldset>
     </main>
   )
 }

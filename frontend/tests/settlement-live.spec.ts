@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { finalize, completedRun } from './support/guided'
 import { execFileSync, spawn } from 'node:child_process'
 import { mkdtempSync, writeFileSync, rmSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -24,7 +25,7 @@ for (const width of [375, 1280]) test(`PostgreSQL resolution oracle and recovery
   const base = `http://127.0.0.1:${port}`
   const env = { ...process.env, CFBD_API_KEY: '', ODDS_API_KEY: '', PYTHONDONTWRITEBYTECODE: '1' }
   const origin = new URL(test.info().project.use.baseURL!).origin
-  const child = spawn(python, [helper, '--metadata', metadata, '--port', String(port), '--origin', origin], { env })
+  const child = spawn(python, [helper, '--metadata', metadata, '--port', String(port), '--origin', origin, '--agent-worker'], { env })
   let logs = ''
   child.stdout.on('data', data => { logs += data }); child.stderr.on('data', data => { logs += data })
   try {
@@ -60,14 +61,17 @@ for (const width of [375, 1280]) test(`PostgreSQL resolution oracle and recovery
     expect(await browserGames.json()).toEqual(await gamesResponse.json())
     await expect(page.getByRole('checkbox')).toHaveCount(5)
     for (const box of await page.getByRole('checkbox').all()) if (await box.isEnabled()) {
-      await box.focus(); await page.keyboard.press('Space')
+      await expect(box).toBeChecked()
     }
+    await finalize(page)
     await page.getByLabel('Run name (optional)').fill(`Resolution ${width}`)
     await page.getByLabel('Starting bankroll').fill('100.00')
     await page.getByLabel('Stake per Bet', { exact: false }).fill('10.00')
     const creation = page.waitForResponse(r => r.url().endsWith('/api/runs') && r.request().method() === 'POST')
-    await page.getByRole('button', { name: 'Create Dry Run', exact: true }).click()
-    const created: RunResult = await (await creation).json()
+    await page.getByRole('button', { name: 'Create Run', exact: true }).click()
+    const accepted: RunResult = await (await creation).json()
+    const created = await completedRun(request, base, accepted.run.id)
+    await page.reload()
     expect(created.bets).toHaveLength(4)
     expect(created.run).toMatchObject({ starting_bankroll: '100.00', committed_stake: '40.00', available_bankroll: '60.00', total_profit: null, roi: null, final_bankroll: null })
     expect(created.bets.every(b => b.line === '0.00' && b.price === '1.9500' && b.stake === '10.00' && b.result === null)).toBe(true)

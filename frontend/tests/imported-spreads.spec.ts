@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { finalize } from './support/guided'
 
 const strategy = { id: '40000000-0000-4000-8000-000000000001', name: 'Random Strategy', type: 'random', is_active: true }
 const gameId = '10000000-0000-4000-8000-000000000001'
@@ -49,9 +50,10 @@ for (const format of ['roles', 'team names']) test(`${format} support team label
     expect(refreshes).toBe(1)
   }
   await expect(page.locator('.selection-team')).toHaveText(['USC', 'UCLA'])
-  await page.getByRole('checkbox').check()
+  await expect(page.getByRole('checkbox')).toBeChecked()
+  await finalize(page)
   await expect(page.getByRole('button', { name: 'Preview decisions' })).toHaveCount(0)
-  await page.getByRole('button', { name: 'Create Dry Run', exact: true }).click()
+  await page.getByRole('button', { name: 'Create Run', exact: true }).click()
   await expect(page).toHaveURL(new RegExp(runId))
   expect(previews).toBe(0)
   expect(creations).toBe(1)

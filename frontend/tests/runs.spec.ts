@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { finalize } from './support/guided'
 const strategy = { id: '40000000-0000-4000-8000-000000000001', name: 'Random Strategy', type: 'random', is_active: true }
 const id = '10000000-0000-4000-8000-000000000001', second = '10000000-0000-4000-8000-000000000002', runId = '60000000-0000-4000-8000-000000000001'
 const storageKey = 'autopredict.pending-run.v1'
@@ -27,11 +28,11 @@ test('creation sends IDs and strings once, saves identity first, then renders sn
     return r.fulfill({ status: 201, json: result })
   })
   await page.goto('/')
-  await expect(page.getByRole('button', { name: 'Create Dry Run', exact: true })).toBeDisabled()
-  await page.getByRole('checkbox').nth(0).check(); await page.getByRole('checkbox').nth(1).check()
+  await expect(page.getByRole('button', { name: 'Continue to Games' })).toBeDisabled()
+  await finalize(page)
   await page.getByLabel('Run name (optional)').fill('My Run')
-  await page.getByRole('button', { name: 'Create Dry Run', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Creating Dry Run…' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Create Run', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Creating Run…' })).toBeDisabled()
   await expect(page).toHaveURL(new RegExp(runId))
   await expect(page.getByRole('region', { name: 'Saved Bets', exact: true })).toContainText('USC Pick’em')
   await expect(page.getByRole('region', { name: 'Saved Bets', exact: true })).toContainText('1.9876')
@@ -47,13 +48,13 @@ test('creation sends IDs and strings once, saves identity first, then renders sn
 test('invalid money prevents creation, correction preserves exact submitted cents', async ({ page }) => {
   let payload: unknown
   await page.route('**/api/runs', r => { payload = r.request().postDataJSON(); return r.fulfill({ status: 201, json: result }) })
-  await page.goto('/'); await page.getByRole('checkbox').first().check()
+  await page.goto('/'); await page.getByRole('checkbox').nth(1).uncheck(); await finalize(page)
   for (const value of ['0','-1','NaN','10.001','10000000000.00']) {
     await page.getByLabel('Starting bankroll').fill(value)
-    await expect(page.getByRole('button', { name: 'Create Dry Run', exact: true })).toBeDisabled()
+    await expect(page.getByRole('button', { name: 'Create Run', exact: true })).toBeDisabled()
   }
   await page.getByLabel('Starting bankroll').fill('100.01'); await page.getByLabel('Stake per Bet').fill('0.01')
-  await page.getByRole('button', { name: 'Create Dry Run', exact: true }).click()
+  await page.getByRole('button', { name: 'Create Run', exact: true }).click()
   await expect(page).toHaveURL(new RegExp(runId))
   expect(payload).toMatchObject({ starting_bankroll: '100.01', stake_per_bet: '0.01' })
 })
@@ -64,8 +65,8 @@ test('lost response restores pending identity after reload and replays with orig
     sent.push({ key: r.request().headers()['idempotency-key'], body: r.request().postDataJSON() })
     return sent.length === 1 ? r.abort('failed') : r.fulfill({ status: 200, json: result })
   })
-  await page.goto('/'); await page.getByRole('checkbox').first().check()
-  await page.getByRole('button', { name: 'Create Dry Run', exact: true }).click()
+  await page.goto('/'); await page.getByRole('checkbox').nth(1).uncheck(); await finalize(page)
+  await page.getByRole('button', { name: 'Create Run', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('may have succeeded')
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Unresolved creation' })).toBeVisible()
@@ -81,24 +82,24 @@ for (const [status, detail, message] of [
 ] as const) test(`${status}: ${detail} allows correction and a new intent`, async ({ page }) => {
   const keys: string[] = []
   await page.route('**/api/runs', r => { keys.push(r.request().headers()['idempotency-key']); return r.fulfill({ status, json: { detail } }) })
-  await page.goto('/'); await page.getByRole('checkbox').first().check()
-  await page.getByRole('button', { name: 'Create Dry Run', exact: true }).click()
+  await page.goto('/'); await page.getByRole('checkbox').nth(1).uncheck(); await finalize(page)
+  await page.getByRole('button', { name: 'Create Run', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText(message)
   await expect(page.getByText('secret internals')).toHaveCount(0)
   await page.getByLabel('Starting bankroll').fill('2000.00')
-  await page.getByRole('button', { name: 'Create Dry Run', exact: true }).click()
+  await page.getByRole('button', { name: 'Create Run', exact: true }).click()
   await expect.poll(() => keys.length).toBe(2); expect(keys[0]).not.toBe(keys[1])
 })
 test('explicit discard explains duplicate risk; new creation uses new identity', async ({ page }) => {
   const keys: string[] = []
   await page.route('**/api/runs', r => { keys.push(r.request().headers()['idempotency-key']); return r.abort('failed') })
-  await page.goto('/'); await page.getByRole('checkbox').first().check()
-  await page.getByRole('button', { name: 'Create Dry Run', exact: true }).click()
+  await page.goto('/'); await page.getByRole('checkbox').nth(1).uncheck(); await finalize(page)
+  await page.getByRole('button', { name: 'Create Run', exact: true }).click()
   await page.getByRole('button', { name: 'Discard pending request' }).click()
   await expect(page.getByText('An earlier Run may already exist.', { exact: false })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Run history' })).toBeVisible()
   await page.getByRole('button', { name: 'Discard and edit settings' }).click()
-  await page.getByRole('button', { name: 'Create Dry Run', exact: true }).click()
+  await page.getByRole('button', { name: 'Create Run', exact: true }).click()
   await expect.poll(() => keys.length).toBe(2); expect(keys[0]).not.toBe(keys[1])
 })
 test('navigation aborts creation without implying rollback or allowing stale redirects', async ({ page }) => {
@@ -108,8 +109,8 @@ test('navigation aborts creation without implying rollback or allowing stale red
     if (r.request().method() !== 'POST') return r.fulfill({ json: [run] })
     await gate; await r.fulfill({ json: result }).catch(() => {})
   })
-  await page.goto('/'); await page.getByRole('checkbox').first().check()
-  await page.getByRole('button', { name: 'Create Dry Run', exact: true }).click()
+  await page.goto('/'); await page.getByRole('checkbox').nth(1).uncheck(); await finalize(page)
+  await page.getByRole('button', { name: 'Create Run', exact: true }).click()
   await page.getByRole('link', { name: 'Runs', exact: true }).click(); release()
   await expect(page.getByRole('heading', { name: 'Runs', exact: true })).toBeVisible()
   await page.getByRole('link', { name: 'Games', exact: true }).click()
@@ -117,11 +118,11 @@ test('navigation aborts creation without implying rollback or allowing stale red
 })
 test('malformed saved intent is discarded and storage failure prevents sending', async ({ page }) => {
   await page.addInitScript(k => sessionStorage.setItem(k, JSON.stringify({ key: 'invalid', body: {} })), storageKey)
-  await page.goto('/'); await expect(page.getByLabel('Starting bankroll')).toBeVisible()
+  await page.goto('/'); await finalize(page); await expect(page.getByLabel('Starting bankroll')).toBeVisible()
   expect(await page.evaluate(k => sessionStorage.getItem(k), storageKey)).toBeNull()
   await page.evaluate(() => { Storage.prototype.setItem = () => { throw new Error('disabled') } })
   let calls = 0; await page.route('**/api/runs', r => { calls++; return r.fulfill({ json: result }) })
-  await page.getByRole('checkbox').first().check(); await page.getByRole('button', { name: 'Create Dry Run', exact: true }).click()
+  await page.getByRole('checkbox').first().check(); await page.getByRole('button', { name: 'Create Run', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('Enable browser session storage'); expect(calls).toBe(0)
 })
 test('history has empty, error/retry and unknown or malformed route states', async ({ page }) => {
@@ -205,8 +206,8 @@ test('timeout retains identity and offers recovery rather than a fresh submissio
   let release!: () => void
   const gate = new Promise<void>(resolve => { release = resolve })
   await page.route('**/api/runs', async r => { await gate; await r.fulfill({ json: result }).catch(() => {}) })
-  await page.goto('/'); await page.getByRole('checkbox').first().check()
-  await page.getByRole('button', { name: 'Create Dry Run', exact: true }).click()
+  await page.goto('/'); await page.getByRole('checkbox').nth(1).uncheck(); await finalize(page)
+  await page.getByRole('button', { name: 'Create Run', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('may have succeeded', { timeout: 18000 })
   await expect(page.getByRole('button', { name: 'Retry creation' })).toBeEnabled()
   expect(await page.evaluate(k => JSON.parse(sessionStorage.getItem(k)!).body.game_ids, storageKey)).toEqual([id])
@@ -214,8 +215,8 @@ test('timeout retains identity and offers recovery rather than a fresh submissio
 })
 test('server errors with unknown outcome retain the original intent', async ({ page }) => {
   await page.route('**/api/runs', r => r.fulfill({ status: 500, json: { detail: 'private exception' } }))
-  await page.goto('/'); await page.getByRole('checkbox').first().check()
-  await page.getByRole('button', { name: 'Create Dry Run', exact: true }).click()
+  await page.goto('/'); await page.getByRole('checkbox').nth(1).uncheck(); await finalize(page)
+  await page.getByRole('button', { name: 'Create Run', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('may have succeeded')
   await expect(page.getByRole('button', { name: 'Retry creation' })).toBeVisible()
   await expect(page.getByText('private exception')).toHaveCount(0)
@@ -237,13 +238,13 @@ test('stale detail reads cannot overwrite a newer view, and detail error can ret
   await expect(page.getByRole('region', { name: 'Saved Bets', exact: true })).toContainText('No Bets recorded')
   await expect(page.getByRole('heading', { name: 'Saved simulation' })).toHaveCount(0)
 })
-test('selection changes during creation preserve the submitted intent without preview requests', async ({ page }) => {
+test('creation freezes selection and preserves the submitted intent without preview requests', async ({ page }) => {
   let submitted: unknown, release!: () => void
   const gate = new Promise<void>(resolve => { release = resolve })
   await page.route('**/api/runs', async r => { submitted = r.request().postDataJSON(); await gate; await r.fulfill({ json: result }) })
-  await page.goto('/'); await page.getByRole('checkbox').first().check()
-  await page.getByRole('button', { name: 'Create Dry Run', exact: true }).click()
-  await page.getByRole('checkbox').first().uncheck(); await page.getByRole('checkbox').nth(1).check()
+  await page.goto('/'); await page.getByRole('checkbox').nth(1).uncheck(); await finalize(page)
+  await page.getByRole('button', { name: 'Create Run', exact: true }).click()
+  await expect(page.getByRole('checkbox').first()).toBeDisabled(); await expect(page.getByRole('checkbox').nth(1)).toBeDisabled()
   await expect(page.getByRole('button', { name: 'Preview decisions' })).toHaveCount(0)
   expect(submitted).toMatchObject({ game_ids: [id] })
   expect(await page.evaluate(k => JSON.parse(sessionStorage.getItem(k)!).body.game_ids, storageKey)).toEqual([id])

@@ -12,7 +12,7 @@ test('game selection never requests predictions before final creation', async ({
   await expect(page.getByRole('checkbox').nth(2)).toBeDisabled()
   await page.getByRole('checkbox').first().focus()
   await page.keyboard.press('Space')
-  await expect(page.getByRole('checkbox').first()).toBeChecked()
+  await expect(page.getByRole('checkbox').first()).not.toBeChecked()
   await page.getByRole('checkbox').nth(1).check()
   await page.getByRole('checkbox').first().uncheck()
   await expect(page.getByRole('button', { name: 'Preview decisions' })).toHaveCount(0)
@@ -21,8 +21,8 @@ test('game selection never requests predictions before final creation', async ({
 for (const kind of ['absent', 'inactive', 'error']) test(`strategy ${kind} prevents execution`, async ({ page }) => {
   await page.route('**/api/strategies', r => r.fulfill(kind === 'error' ? { status: 503, json: {} } : { json: kind === 'absent' ? [] : [{ ...strategy, is_active: false }] }))
   await page.goto('/'); await page.getByRole('checkbox').first().check()
-  await expect(page.getByRole('button', { name: 'Create Dry Run', exact: true })).toBeDisabled()
-  await expect(page.getByText(kind === 'error' ? 'Strategies couldn’t be loaded.' : `Random Strategy ${kind === 'absent' ? 'unavailable' : 'inactive'}`, { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Continue to Games' })).toBeDisabled()
+  await expect(page.getByText(kind === 'error' ? 'Strategies couldn’t be loaded.' : 'No active strategies available.', { exact: true })).toBeVisible()
 })
 test('cutoff, invalid pairs and inactive quotes disable selection', async ({ page }) => {
   await page.route('**/api/games?window=current', r => r.fulfill({ json: [
