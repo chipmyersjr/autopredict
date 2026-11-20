@@ -1,6 +1,6 @@
 # Design 6, part 1 — Agent Strategy frontend
 
-Area status: `in_progress`
+Area status: `complete`
 
 Planning status: ready. Current execution status and evidence are recorded in the task checklist and latest loop entries.
 
@@ -77,13 +77,13 @@ No profile editor, model/tool controls, strategy categories, Preview UI, separat
   - Validation: Playwright fixtures for null/blank/1,000-character/special-character reasoning, keyboard expand/collapse, screen-reader name, no HTML execution, team-side label mapping, long text/mobile overflow, immutable snapshots, settlement response reload and strategy labels in history. Preserve Saved Bets/settlement/dashboard regressions.
   - Completion notes: Implemented accessible, plain-text saved reasoning disclosures with 1,000-character limits and mobile wrapping. Added desktop/mobile regression coverage for keyboard access, HTML safety, settlement persistence, snapshots, and strategy labels. Whitespace checks passed; browser/build verification awaits the runner because Node is unavailable and Docker access is denied. No protected files or Git state changed. Independent checks: Whitespace passed; Start sandbox database passed; Build current backend and fixture dependencies passed; Build shared isolated browser image passed; Frontend build and controlled browser regressions passed. Files: frontend/src/pages/RunsPage.tsx, frontend/src/styles.css, frontend/tests/saved-reasoning.spec.ts, progress/6_1_agent_strategy/front_end/plan.md, ralph/agent-strategy-frontend.progress.json. Logs: .git/ralph/2e21aa4abb5195e3/FE-04-005.*. Automated browser checks use controlled data. FE-05 additionally requires real API/worker execution in a generated disposable PostgreSQL database with fake model/search responses. Actual Ollama/DuckDuckGo behavior is not established by these checks.
 
-- [ ] FE-05 — Prove the complete guided Random and Agent flows
-  - Status: not_started
+- [x] FE-05 — Prove the complete guided Random and Agent flows
+  - Status: complete
   - Scope: Add real-API desktop/mobile acceptance against guarded disposable PostgreSQL and a controlled worker/model/search fixture; record actual live Ollama smoke separately.
   - Dependencies: FE-01–FE-04; backend BE-07 fixture and worker startup support.
   - Acceptance criteria: Create each strategy only after final review; observe real persisted progress; close/reopen during processing; recover the same Run after response loss; inspect saved reasoning/skips; settle controlled final results and inspect unchanged server profit/ROI through existing views. Worker restart does not duplicate Bets. No developer/provider database mutations or live-key requirements for automated acceptance.
   - Validation: Production build, full controlled browser regressions and PostgreSQL-backed flows at 375px/1280px, keyboard and screenshot inspection, partial/all-failed/quote-change cases, worker restart, exact accounting checks and fixture/server/database cleanup. Manual local-model/keyless-DuckDuckGo run is conditional on the model and network being available; mark unperformed if unavailable.
-  - Completion notes: Not implemented or validated.
+  - Completion notes: Strengthened existing desktop/mobile Agent live acceptance assertions for persisted progress, replay immutability, financial separation, and all-failed retry outcomes. Whitespace passed. Required Docker build/browser checks were attempted but prevented by sandbox filesystem/socket restrictions; runner verification remains required. No Git or protected-file edits performed. Independent checks: Whitespace passed; Start sandbox database passed; Build current backend and fixture dependencies passed; Build shared isolated browser image passed; Frontend build and real API/worker PostgreSQL browser acceptance passed. Files: frontend/tests/agent-live.spec.ts, frontend/tests/settlement-live.spec.ts, frontend/tests/support/live_backend.py, progress/6_1_agent_strategy/front_end/plan.md, ralph/agent-strategy-frontend.progress.json. Logs: .git/ralph/2e21aa4abb5195e3/FE-05-008.*. Automated browser checks use controlled data. FE-05 additionally requires real API/worker execution in a generated disposable PostgreSQL database with fake model/search responses. Actual Ollama/DuckDuckGo behavior is not established by these checks.
 
 ## Execution order and completion criteria
 
@@ -131,4 +131,11 @@ Backend BE-01–BE-07 supplies the durable runtime; frontend FE-01 → FE-02 →
 - Completed tasks: FE-04.
 - Validation: Whitespace passed; Start sandbox database passed; Build current backend and fixture dependencies passed; Build shared isolated browser image passed; Frontend build and controlled browser regressions passed.
 - Completion notes: Implemented accessible, plain-text saved reasoning disclosures with 1,000-character limits and mobile wrapping. Added desktop/mobile regression coverage for keyboard access, HTML safety, settlement persistence, snapshots, and strategy labels. Whitespace checks passed; browser/build verification awaits the runner because Node is unavailable and Docker access is denied. No protected files or Git state changed.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
+
+### 2026-11-20 04:09 UTC — FE-05 Ralph execution
+
+- Completed tasks: FE-05.
+- Validation: Whitespace passed; Start sandbox database passed; Build current backend and fixture dependencies passed; Build shared isolated browser image passed; Frontend build and real API/worker PostgreSQL browser acceptance passed.
+- Completion notes: Strengthened existing desktop/mobile Agent live acceptance assertions for persisted progress, replay immutability, financial separation, and all-failed retry outcomes. Whitespace passed. Required Docker build/browser checks were attempted but prevented by sandbox filesystem/socket restrictions; runner verification remains required. No Git or protected-file edits performed.
 - Next: Continue the configured task sequence; live-provider verification remains separately reported.

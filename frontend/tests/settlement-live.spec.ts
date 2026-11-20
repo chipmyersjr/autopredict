@@ -92,16 +92,16 @@ for (const width of [375, 1280]) test(`PostgreSQL resolution oracle and recovery
     expect(pending.pending_games.map(g => g.reason)).toEqual(Array(4).fill('game_not_final'))
     await expect(summary).toContainText('No new Bets settled.')
     await metric('Realized profit', 'Not settled')
-    const finalize = (values: Record<string, { status: string; home_score: number | null; away_score: number | null }>) => {
+    const finalizeResults = (values: Record<string, { status: string; home_score: number | null; away_score: number | null }>) => {
       writeFileSync(results, JSON.stringify(values))
       execFileSync(python, [helper, '--metadata', metadata, '--finalize-run', created.run.id, '--results', results], { env })
     }
-    const finals: Parameters<typeof finalize>[0] = {}
+    const finals: Parameters<typeof finalizeResults>[0] = {}
     created.bets.slice(0, 3).forEach((bet, index) => {
       const homeWins = index === 0 ? bet.side === bet.home_team : bet.side !== bet.home_team
       finals[bet.game_id] = { status: 'completed', home_score: index === 2 ? 7 : homeWins ? 21 : 14, away_score: index === 2 ? 7 : homeWins ? 14 : 21 }
     })
-    finalize(finals)
+    finalizeResults(finals)
     execFileSync(python, [helper, '--metadata', metadata, '--mutate-run', created.run.id], { env })
     expect(await (await request.get(`${base}${path}/bets`)).json()).toEqual(created.bets)
     let lost: SettlementResult | undefined
@@ -128,11 +128,11 @@ for (const width of [375, 1280]) test(`PostgreSQL resolution oracle and recovery
     for (const [label, value] of [['Realized profit', '-0.50'], ['Realized ROI', '-0.5%'], ['Current bankroll', '99.50'], ['Available bankroll', '89.50'], ['Open committed stake', '10.00']]) await metric(label, value)
     await expect(summary.getByText('Final bankroll', { exact: true })).toHaveCount(0)
     const remaining = created.bets[3].game_id
-    finalize({ [remaining]: { status: 'completed', home_score: null, away_score: null } })
+    finalizeResults({ [remaining]: { status: 'completed', home_score: null, away_score: null } })
     const missing = await settle()
     expect(missing.pending_games).toEqual([{ game_id: remaining, reason: 'final_scores_missing' }])
     await expect(summary).toContainText('Final scores missing')
-    finalize({ [remaining]: { status: 'canceled', home_score: null, away_score: null } })
+    finalizeResults({ [remaining]: { status: 'canceled', home_score: null, away_score: null } })
     const complete = await settle()
     expect(complete.run).toMatchObject({ status: 'completed', final_bankroll: '99.50', available_bankroll: '99.50', committed_stake: '0.00', total_profit: '-0.50', roi: '-0.0050', win_count: 1, loss_count: 1, push_count: 1, void_count: 1, open_bet_count: 0 })
     expect(complete.run.end_time).not.toBeNull()

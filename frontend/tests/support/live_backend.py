@@ -27,12 +27,15 @@ from app.seed_user import seed_user
 from app.settings import Settings
 
 
-def fixture_worker(database, ready):
+def fixture_worker(database, ready, control_path):
     """Production execution loop; only external transports are test doubles."""
     import httpx
     from app.agent_services import DuckDuckGoSearch, local_model_client
     from app.predictors import get_predictor
     from app.run_worker import serve
+
+    def controls():
+        return json.loads(control_path.read_text()) if control_path.exists() else {}
 
     class Search:
         def __init__(self, *, timeout):
@@ -40,6 +43,8 @@ def fixture_worker(database, ready):
 
         def text(self, query, *, backend, max_results):
             assert backend == 'duckduckgo' and max_results == 5
+            if controls().get(query, {}).get('mode') == 'research_failed':
+                return []
             return [dict(title='Fictional fixture evidence', href='https://example.test/football',
                          body='Controlled fictional teams have comparable recent form.')]
 
@@ -48,11 +53,26 @@ def fixture_worker(database, ready):
         # Keep processing observable for close/reopen and worker restart checks.
         await asyncio.sleep(.3)
         messages = body['messages']
+        context = json.loads(messages[1]['content'])
+        game_id = context['game_id']
+        with Session(engine) as session:
+            attempts = session.scalar(select(RunGame.attempts).join(Run).where(
+                RunGame.game_id == UUID(game_id), Run.execution_status == 'running'))
+        while controls().get(game_id, {}).get('hold_attempt') == attempts:
+            await asyncio.sleep(.05)
+        mode = controls().get(game_id, {}).get('mode')
+        if mode == 'unavailable' or (mode == 'retry_once' and attempts == 1):
+            return httpx.Response(503, json={'error': 'controlled unavailable'})
+        if mode == 'invalid':
+            return httpx.Response(200, json=dict(model='fixture-model', done=True,
+                message=dict(role='assistant', content='{}')))
         if messages[-1]['role'] != 'tool':
             message = dict(role='assistant', content='', tool_calls=[dict(function=dict(
-                name='web_search', arguments={'query': 'fictional football form'}))])
+                name='web_search', arguments={'query': game_id}))])
         else:
             context = json.loads(messages[1]['content'])
+            evidence = json.loads(messages[-1]['content'])['untrusted_evidence']
+            assert evidence[0]['url'] == 'https://example.test/football'
             message = dict(role='assistant', content=json.dumps(dict(
                 selection_id=context['selections'][0]['selection_id'],
                 reasoning='Controlled fictional research supports this saved spread selection.')))
@@ -100,7 +120,8 @@ async def serve_fixture(args, database):
     async def start_worker():
         nonlocal worker
         receiver, sender = context.Pipe(duplex=False)
-        worker = context.Process(target=fixture_worker, args=(database, sender))
+        worker = context.Process(target=fixture_worker, args=(database, sender,
+            args.metadata.with_suffix('.control.json')))
         worker.start()
         sender.close()
         try:
@@ -195,6 +216,9 @@ def mutate(metadata, run_id, restore=False):
                 game.home_team = originals[game.id].home_team if restore else 'Changed current home'
                 game.away_team = originals[game.id].away_team if restore else 'Changed current away'
                 game.start_time = now + (current_week(now).end - now) / 2 if restore else now - timedelta(days=14)
+                if restore:
+                    game.status = 'scheduled'
+                    game.home_score = game.away_score = None
             for selection in session.scalars(select(Selection).join(Market).where(Market.game_id.in_(ids))):
                 selection.line = Decimal('0.00')
                 selection.price = Decimal('1.9500') if restore else Decimal('3.1234')
@@ -213,7 +237,10 @@ def inspect_run(metadata, run_id):
             bets = session.scalars(select(Bet).where(Bet.run_id == UUID(run_id))).all()
             def record(row):
                 return {column.name: getattr(row, column.name) for column in row.__table__.columns}
-            print(json.dumps({'run': record(run), 'bets': [record(bet) for bet in bets]}, default=str))
+            rows = session.scalars(select(RunGame).where(RunGame.run_id == run.id)
+                                   .order_by(RunGame.position)).all()
+            print(json.dumps({'run': record(run), 'bets': [record(bet) for bet in bets],
+                              'games': [record(row) for row in rows]}, default=str))
     finally:
         engine.dispose()
 
@@ -228,9 +255,42 @@ def main():
     parser.add_argument('--mutate-run')
     parser.add_argument('--restore-run')
     parser.add_argument('--inspect-run')
+    parser.add_argument('--control', help='Per-fictional-game transport controls as JSON')
+    parser.add_argument('--quote-run', help='Change only fictional current prices during research')
+    parser.add_argument('--restart-worker', action='store_true')
     parser.add_argument('--finalize-run')
     parser.add_argument('--results', type=Path, help='JSON mapping game UUIDs to status/home_score/away_score')
     args = parser.parse_args()
+    if args.control is not None or args.quote_run or args.restart_worker:
+        engine = guarded_engine(args.metadata)
+        try:
+            if args.control is not None:
+                values = json.loads(args.control)
+                known = {str(game.id) for game in demo_games(date.today())}
+                if not isinstance(values, dict) or not values.keys() <= known:
+                    raise ValueError('Controls require known fictional game IDs')
+                for value in values.values():
+                    if (not isinstance(value, dict) or not value.keys() <= {'mode', 'hold_attempt'}
+                        or value.get('mode') not in {None, 'retry_once', 'unavailable', 'invalid', 'research_failed'}
+                        or value.get('hold_attempt') not in {None, 1, 2}):
+                        raise ValueError('Invalid transport control')
+                target = args.metadata.with_suffix('.control.json')
+                temporary = target.with_suffix('.tmp')
+                temporary.write_text(json.dumps(values))
+                temporary.replace(target)
+            if args.quote_run:
+                with Session(engine) as session, session.begin():
+                    ids = [game.id for game in run_games(session, args.quote_run)]
+                    for selection in session.scalars(select(Selection).join(Market).where(Market.game_id.in_(ids))):
+                        selection.price += Decimal('.0100')
+            if args.restart_worker:
+                info = json.loads(args.metadata.read_text())
+                if not info.get('worker_pid'):
+                    raise ValueError('Agent worker was not enabled')
+                os.kill(info['worker_pid'], signal.SIGTERM)
+        finally:
+            engine.dispose()
+        return
     if args.restore_run:
         if args.mutate_run or args.finalize_run or args.results or args.inspect_run:
             parser.error('--restore-run excludes other actions')
@@ -286,6 +346,7 @@ def main():
         if engine:
             engine.dispose()
         args.metadata.unlink(missing_ok=True)
+        args.metadata.with_suffix('.control.json').unlink(missing_ok=True)
         with admin.connect() as connection:
             connection.execute(text(f'DROP DATABASE "{database}" WITH (FORCE)'))
         admin.dispose()
