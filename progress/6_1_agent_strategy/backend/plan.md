@@ -91,13 +91,13 @@ These are implementation details under design 6, not a replacement product speci
   - Validation: PostgreSQL multi-worker/process tests, expired/live leases, stale writer rejection, failure before/after each durable boundary, heartbeat loss, graceful shutdown and restart, attempt budget, progress bounds and no model work on GET.
   - Completion notes: Implemented durable worker claims, renewable leases, fencing, persisted attempts/predictions, restart recovery, progress snapshots, shutdown handling and --once execution. Added PostgreSQL recovery and concurrency tests. Syntax and whitespace checks passed; Docker socket permissions prevented running PostgreSQL tests locally. Runner-owned files and Git state were untouched. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: backend/app/run_worker.py, backend/tests/test_run_worker.py, progress/6_1_agent_strategy/backend/plan.md, ralph/agent-strategy-backend.progress.json. Logs: .git/ralph/d796df80c525cf1e/BE-04-007.*. Automated verification uses disposable databases and controlled model/search responses. Actual local Ollama plus live DuckDuckGo verification is separate; no profitable-strategy claim or live-service verification is implied. Final cross-area browser proof belongs to FE-05.
 
-- [ ] BE-05 — Refactor creation and atomic best-effort Bet finalization
-  - Status: not_started
+- [x] BE-05 — Refactor creation and atomic best-effort Bet finalization
+  - Status: complete
   - Scope: Persist accepted requests before prediction; dispatch both strategy types through worker; capture/revalidate quote inputs, retry once where permitted, commit successful Bets and final skips atomically.
   - Dependencies: BE-04.
   - Acceptance criteria: Creation replay is durable and never starts another job; same-key conflict is safe; eligibility/bankroll and immutable saved inputs hold; quote changes cause fresh-input retry then skip; some game failures preserve successes; all-skipped Runs remain inspectable without fabricated accounting; settlement is blocked until successful execution completion.
   - Validation: Concurrent same-key POSTs, crash/response loss around acceptance/final commit, quote/alias/selection changes during inference, kickoff crossing, 50→47 example, all failed, invalid bankroll, injected rollback, duplicate finalization, unchanged historical reasoning and existing settlement/dashboard numeric oracles.
-  - Completion notes: Not implemented or validated.
+  - Completion notes: Corrected the downgrade regression fixture to clear execution_started_at when setting queued status. Python syntax and whitespace checks pass. Docker permissions prevented local regressions; ready for runner verification. No protected files or Git state changed. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: backend/app/run_worker.py, backend/app/runs.py, backend/tests/test_agent_persistence.py, backend/tests/test_dashboard.py, backend/tests/test_ingress_api.py, backend/tests/test_resolution_handoff.py, backend/tests/test_run_finalization.py, backend/tests/test_run_settlement.py, backend/tests/test_runs.py, backend/tests/test_settlement_persistence.py, progress/6_1_agent_strategy/backend/plan.md, ralph/agent-strategy-backend.progress.json. Logs: .git/ralph/d796df80c525cf1e/BE-05-009.*. Automated verification uses disposable databases and controlled model/search responses. Actual local Ollama plus live DuckDuckGo verification is separate; no profitable-strategy claim or live-service verification is implied. Final cross-area browser proof belongs to FE-05.
 
 - [ ] BE-06 — Expose creation, progress and reasoning APIs
   - Status: not_started
@@ -162,4 +162,11 @@ BE-01 → BE-02 → BE-03 → BE-04 → BE-05 → BE-06 → BE-07. FE-01 may imp
 - Completed tasks: BE-04.
 - Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
 - Completion notes: Implemented durable worker claims, renewable leases, fencing, persisted attempts/predictions, restart recovery, progress snapshots, shutdown handling and --once execution. Added PostgreSQL recovery and concurrency tests. Syntax and whitespace checks passed; Docker socket permissions prevented running PostgreSQL tests locally. Runner-owned files and Git state were untouched.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.
+
+### 2026-11-20 03:25 UTC — BE-05 Ralph execution
+
+- Completed tasks: BE-05.
+- Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
+- Completion notes: Corrected the downgrade regression fixture to clear execution_started_at when setting queued status. Python syntax and whitespace checks pass. Docker permissions prevented local regressions; ready for runner verification. No protected files or Git state changed.
 - Next: Continue the configured task sequence; live-provider verification remains separately reported.

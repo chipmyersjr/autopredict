@@ -8,7 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError, DataError, IntegrityError
 
 from app.schemas import BetDecision, StrategyCreate
-from test_runs import api, body, post
+from test_runs import api, body, finished_post as post, legacy_execution_fixture
 
 
 @pytest.mark.parametrize("config", [None, {}, {"profile": "unknown"},
@@ -35,6 +35,7 @@ def test_legacy_backfill_snapshots_and_cycle(api, migrated_database):
     client, engine, games = api
     _, config = migrated_database
     saved = post(client, body(games)).json()
+    legacy_execution_fixture(engine)
     run_id = saved["run"]["id"]
     with engine.connect() as connection:
         before = connection.execute(text("SELECT id, side, line, price, stake, home_team, away_team, kickoff_at_placement, observation_id, bookmaker, source_timestamp, fetched_at FROM bets ORDER BY id")).all()
@@ -77,7 +78,7 @@ def test_legacy_backfill_snapshots_and_cycle(api, migrated_database):
 ])
 def test_database_rejects_invalid_contracts(api, statement):
     client, engine, games = api
-    assert post(client, body(games)).status_code == 201
+    assert post(client, body(games)).status_code == 200
     with engine.begin() as connection:
         with pytest.raises(IntegrityError):
             with connection.begin_nested():
@@ -86,7 +87,7 @@ def test_database_rejects_invalid_contracts(api, statement):
 
 def test_database_rejects_overlong_reasoning(api):
     client, engine, games = api
-    assert post(client, body(games)).status_code == 201
+    assert post(client, body(games)).status_code == 200
     with engine.begin() as connection:
         with pytest.raises(DataError) as rejected:
             with connection.begin_nested():
@@ -101,14 +102,15 @@ def test_database_rejects_overlong_reasoning(api):
 @pytest.mark.parametrize("statement", [
     "UPDATE strategies SET type='agent', config='{\"profile\":\"FootballAnalysisExpert\"}'::jsonb",
     "UPDATE bets SET reasoning='Evidence supports covering the saved spread.'",
-    "UPDATE runs SET execution_status='queued', execution_finished_at=NULL",
+    "UPDATE runs SET execution_status='queued', execution_started_at=NULL, execution_finished_at=NULL",
     "UPDATE run_games SET attempts=1",
     "UPDATE run_games SET state='skipped', skip_reason='research_failed'",
 ])
 def test_downgrade_refuses_incompatible_data(api, migrated_database, statement):
     client, engine, games = api
     _, config = migrated_database
-    assert post(client, body(games)).status_code == 201
+    assert post(client, body(games)).status_code == 200
+    legacy_execution_fixture(engine)
     with engine.begin() as connection:
         connection.execute(text(statement))
     with pytest.raises(DBAPIError, match="incompatible Agent execution data"):

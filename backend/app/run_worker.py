@@ -12,8 +12,9 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import set_committed_value
 
-from app.models import Game, Run, RunGame, Strategy
+from app.models import Game, Market, QuoteObservation, Run, RunGame, Selection, Strategy
 from pydantic import ValidationError
 
 from app.predictors import (AgentDecision, Prediction, PredictionFailure, PredictionInput,
@@ -141,6 +142,72 @@ def save_attempt(engine, claim, row_id, *, prediction=None, failure=None):
             row.state = "predicted"
 
 
+def finalize(engine, claim):
+    """Return False when fresh prediction work is needed; otherwise commit once.
+
+    Games precede Run and dependent rows in the lock order shared by ingress and
+    settlement. A retry commits no Bets, retaining all unaffected predictions.
+    """
+    from app.runs import DryRunAdapter
+
+    with Session(engine) as session, session.begin():
+        game_ids = select(RunGame.game_id).where(RunGame.run_id == claim.run_id)
+        games = session.scalars(select(Game).where(Game.id.in_(game_ids))
+            .order_by(Game.id).with_for_update()).all()
+        run, now = owned(session, claim)
+        rows = session.scalars(select(RunGame).where(RunGame.run_id == run.id)
+            .order_by(RunGame.position).with_for_update()).all()
+        if any(row.state not in {"predicted", "skipped"} for row in rows):
+            return False
+        markets = session.scalars(select(Market).where(Market.game_id.in_([g.id for g in games]))
+            .order_by(Market.id).with_for_update()).all()
+        selections = session.scalars(select(Selection).where(Selection.market_id.in_([m.id for m in markets]))
+            .order_by(Selection.id).with_for_update()).all()
+        session.scalars(select(QuoteObservation).where(QuoteObservation.game_id.in_([g.id for g in games]))
+            .order_by(QuoteObservation.id).with_for_update()).all()
+        # Lock waits can cross kickoff or lease expiry.
+        run, now = owned(session, claim)
+        for market in markets:
+            set_committed_value(market, "selections", [s for s in selections if s.market_id == market.id])
+        for game in games:
+            set_committed_value(game, "markets", [m for m in markets if m.game_id == game.id])
+        by_id = {g.id: g for g in games}
+        decisions, retry = [], False
+        for row in rows:
+            if row.state == "skipped":
+                continue
+            game = by_id[row.game_id]
+            candidates, skip = resolve_candidates(game, now, session)
+            if skip:
+                row.state, row.skip_reason = "skipped", skip.reason
+                continue
+            fresh = PredictionInput(game.id, game.home_team, game.away_team,
+                                    game.start_time, tuple(candidates))
+            if encode_input(fresh) != row.prediction_input:
+                row.validated_prediction = None
+                if row.attempts < 2:
+                    row.state = "retrying"
+                    retry = True
+                else:
+                    row.state, row.skip_reason = "skipped", "quote_changed"
+                continue
+            decisions.append(BetDecision.model_validate(row.validated_prediction))
+        if retry:
+            return False
+        # Acceptance reserved the maximum stake. Recheck before any Bet writes.
+        if len(decisions) * run.stake_per_bet > run.starting_bankroll:
+            raise ValueError("Run stake exceeds starting bankroll")
+        DryRunAdapter().record(run, decisions, by_id, run.stake_per_bet, now)
+        for row in rows:
+            if row.state == "predicted":
+                row.state = "bet_created"
+        run.execution_status = "completed" if decisions else "failed"
+        run.execution_message = None if decisions else "No Bets could be created; see per-game skip reasons."
+        run.execution_finished_at = now
+        run.execution_owner_token = run.execution_lease_expires_at = None
+        return True
+
+
 def execution_snapshot(session, run_id, owner):
     """One SQL snapshot; this read never claims or runs work."""
     records = session.execute(select(Run, RunGame).outerjoin(RunGame, RunGame.run_id == Run.id)
@@ -168,7 +235,12 @@ async def process_claim(engine, claim, predictor_factory):
             heartbeat(engine, claim)
 
     async def predict_games():
-        while (work := begin_attempt(engine, claim)) is not None:
+        while True:
+            work = begin_attempt(engine, claim)
+            if work is None:
+                if finalize(engine, claim):
+                    return
+                continue
             row_id, value, kind, config = work
             try:
                 predictor = predictor_factory(kind, config)

@@ -9,7 +9,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from app.models import Bet, Game, Selection
-from test_runs import api, body, post
+from test_runs import api, body, finished_post as post
 
 
 def create(client, games):

@@ -77,6 +77,16 @@ def test_http_resolution_handoff(tmp_path):
                 response = client.post('/api/runs', json=payload, headers=headers)
                 assert response.status_code == 201, response.text
                 saved = response.json()
+                assert saved['run']['execution_status'] == 'queued' and saved['bets'] == []
+                assert client.post('/api/runs/'+saved['run']['id']+'/settle').status_code == 409
+                engine = fixture.guarded_engine(metadata)
+                try:
+                    from test_runs import drain
+                    drain(engine)
+                finally:
+                    engine.dispose()
+                saved = client.post('/api/runs', json=payload, headers=headers).json()
+                assert saved['run']['execution_status'] == 'completed'
                 bets = saved['bets']
                 assert len(bets) == 4
                 assert all(b['line'] == '0.00' and b['price'] == '1.9500' for b in bets)

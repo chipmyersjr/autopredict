@@ -204,7 +204,11 @@ def test_imported_provenance_snapshots_and_clock_cutoff(migrated_database, monke
                 "strategy_id": str(RANDOM_STRATEGY_ID), "game_ids": [game_id],
                 "starting_bankroll": "100", "stake_per_bet": "10"})
             assert response.status_code == 201, response.text
-            saved = response.json()["bets"][0]
+            assert response.json()["bets"] == []
+            monkeypatch.setattr("app.run_worker.db_now", lambda session: clock[0])
+            from test_runs import drain
+            drain(engine)
+            saved = client.get('/api/runs/'+response.json()['run']['id']+'/bets').json()[0]
             assert saved["quote_provenance"]["bookmaker"] == "alpha"
             clock[0] += timedelta(seconds=1)
             importer.apply([event([book("beta", point=-7)])], window)

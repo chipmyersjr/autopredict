@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Bet, Game, Run, User
 from app.seed_user import LOCAL_USER_ID
-from test_runs import api, body, post
+from test_runs import api, body, finished_post as post
 from test_run_settlement import create, finals
 
 
