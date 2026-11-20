@@ -1,8 +1,8 @@
 # Design 6, part 1 — Agent Strategy backend
 
-Area status: `not_started`
+Area status: `in_progress`
 
-Planning status: ready. Planning requested November 19, 2026; no implementation or runtime validation performed.
+Planning status: ready. Current execution status and evidence are recorded in the task checklist and latest loop entries.
 
 ## Objective and governing design
 
@@ -59,13 +59,13 @@ These are implementation details under design 6, not a replacement product speci
 
 ## Tasks
 
-- [ ] BE-01 — Add Agent Strategy and durable execution persistence
-  - Status: not_started
+- [x] BE-01 — Add Agent Strategy and durable execution persistence
+  - Status: complete
   - Scope: Add the reasoning, execution and per-game operational fields/constraints and additive migration; extend response/domain types and skip enums.
   - Dependencies: Existing ingress/settlement schema.
   - Acceptance criteria: No new tables; old data backfills safely; profile/config, reasoning length and execution-state consistency are validated; current money/evidence constraints and unique Run/game/key guarantees remain intact.
   - Validation: Disposable PostgreSQL upgrade/downgrade/re-upgrade, Alembic drift, invalid configuration/state/reasoning constraints, legacy Run/Bet reads and immutable snapshot checks. Downgrade must refuse incompatible Agent data rather than silently remove it.
-  - Completion notes: Not implemented or validated.
+  - Completion notes: Corrected the persistence regression to assert PostgreSQL’s exact overlength error and verify the 1,000-character boundary. Syntax and whitespace checks passed. PostgreSQL tests require runner verification because Docker access is denied here. Runner-owned files and Git state were left untouched. Independent checks: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed. Files: backend/app/models.py, backend/app/runs.py, backend/app/schemas.py, backend/tests/test_agent_persistence.py, migrations/versions/0006_agent_execution.py, progress/6_1_agent_strategy/backend/plan.md, ralph/agent-strategy-backend.progress.json. Logs: .git/ralph/d796df80c525cf1e/BE-01-002.*. Automated verification uses disposable databases and controlled model/search responses. Actual local Ollama plus live DuckDuckGo verification is separate; no profitable-strategy claim or live-service verification is implied. Final cross-area browser proof belongs to FE-05.
 
 - [ ] BE-02 — Add native Ollama clients and the server-owned profile
   - Status: not_started
@@ -135,3 +135,10 @@ BE-01 → BE-02 → BE-03 → BE-04 → BE-05 → BE-06 → BE-07. FE-01 may imp
 - Decision: CHIP selected DuckDuckGo instead of hosted Ollama search. Updated design 6 and affected BE-02/BE-03/BE-07 details; retain a provider-independent tool and the existing bounded failure policy.
 - Validation: Checked DDGS's documented explicit DuckDuckGo backend, timeout and result shape. No live search/model execution or dependency installation performed.
 - Next: Implement the revised tasks without adding an Ollama search key requirement.
+
+### 2026-11-20 02:36 UTC — BE-01 Ralph execution
+
+- Completed tasks: BE-01.
+- Validation: Whitespace passed; Start sandbox database passed; Build backend dependencies passed; Backend regressions with disposable PostgreSQL databases passed.
+- Completion notes: Corrected the persistence regression to assert PostgreSQL’s exact overlength error and verify the 1,000-character boundary. Syntax and whitespace checks passed. PostgreSQL tests require runner verification because Docker access is denied here. Runner-owned files and Git state were left untouched.
+- Next: Continue the configured task sequence; live-provider verification remains separately reported.

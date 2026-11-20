@@ -5,7 +5,7 @@ from decimal import Decimal
 from uuid import UUID
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, field_serializer
+from pydantic import BaseModel, ConfigDict, field_serializer, model_validator
 from pydantic import Field, field_validator
 
 
@@ -79,23 +79,24 @@ class GameResponse(TimestampResponse):
 class StrategyCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     name: str = Field(min_length=1, max_length=255)
-    type: Literal["random"] = "random"
+    type: Literal["random", "agent"] = "random"
     description: str | None = None
     is_active: bool = True
     config: dict | None = None
 
-    @field_validator("config")
-    @classmethod
-    def validate_config(cls, value):
-        if value:
+    @model_validator(mode="after")
+    def validate_config(self):
+        if self.type == "random" and self.config not in (None, {}):
             raise ValueError("Random Strategy accepts only null or empty configuration")
-        return value
+        if self.type == "agent" and self.config != {"profile": "FootballAnalysisExpert"}:
+            raise ValueError("Agent Strategy requires exactly the registered FootballAnalysisExpert profile")
+        return self
 
 
 class StrategyResponse(TimestampResponse):
     id: UUID
     name: str
-    type: Literal["random"]
+    type: Literal["random", "agent"]
     description: str | None
     is_active: bool
     config: dict | None
@@ -130,11 +131,25 @@ class BetDecision(BaseModel):
     line: Decimal
     price: Decimal
     quote_provenance: QuoteProvenance | None = None
+    reasoning: str | None = Field(default=None, min_length=1, max_length=1000)
+
+    @field_validator("reasoning")
+    @classmethod
+    def trimmed_reasoning(cls, value):
+        if value is not None and (not value.strip() or value != value.strip()):
+            raise ValueError("Reasoning must be trimmed and nonblank")
+        return value
+
+
+ExecutionStatus = Literal["queued", "running", "completed", "failed"]
+GameExecutionState = Literal["queued", "analysing", "retrying", "predicted", "bet_created", "skipped"]
+SkipReason = Literal["game_not_scheduled", "kickoff_reached", "spread_unavailable",
+                     "agent_unavailable", "research_failed", "invalid_agent_decision", "quote_changed"]
 
 
 class SkippedGame(BaseModel):
     game_id: UUID
-    reason: Literal["game_not_scheduled", "kickoff_reached", "spread_unavailable"]
+    reason: SkipReason
 
 
 class DecisionResponse(BaseModel):
@@ -180,6 +195,9 @@ class RunResponse(TimestampResponse):
     name: str | None
     notes: str | None
     status: str
+    execution_status: ExecutionStatus
+    execution_started_at: datetime | None
+    execution_finished_at: datetime | None
     starting_bankroll: Decimal
     stake_per_bet: Decimal
     start_time: datetime
@@ -201,7 +219,7 @@ class RunResponse(TimestampResponse):
     void_count: int
     skipped_games: list[SkippedGame]
 
-    @field_serializer("start_time", "end_time")
+    @field_serializer("start_time", "end_time", "execution_started_at", "execution_finished_at")
     def utc_times(self, value):
         return value.astimezone(timezone.utc).isoformat() if value is not None else None
 
@@ -213,6 +231,7 @@ class BetResponse(TimestampResponse):
     game_id: UUID
     market_id: UUID
     side: str
+    reasoning: str | None
     line: Decimal
     home_team: str
     away_team: str

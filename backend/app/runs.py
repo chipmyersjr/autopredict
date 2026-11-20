@@ -226,7 +226,8 @@ def create_run(session: Session, body: RunCreate, key: UUID):
             retained.append(decision)
     check_budget(len(retained), run.stake_per_bet, run.starting_bankroll)
     run.start_time = placed_at
-    run.games = [RunGame(game_id=g, position=i, skip_reason=skips.get(g), included_at=placed_at)
+    run.games = [RunGame(game_id=g, position=i, skip_reason=skips.get(g), included_at=placed_at,
+                         state="skipped" if g in skips else "bet_created")
                  for i, g in enumerate(body.game_ids)]
     DryRunAdapter().record(run, retained, by_id, run.stake_per_bet, placed_at)
     session.commit()
