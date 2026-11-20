@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "plan": "progress/6_1_agent_strategy/backend/plan.md",
+  "area_status": "not_started",
+  "tasks": {
+    "BE-01": {"title": "Add Agent Strategy and durable execution persistence", "status": "not_started"},
+    "BE-02": {"title": "Add native Ollama clients and the server-owned profile", "status": "not_started"},
+    "BE-03": {"title": "Implement shared predictors and the bounded Agent tool loop", "status": "not_started"},
+    "BE-04": {"title": "Build durable Run claims, progress and restart recovery", "status": "not_started"},
+    "BE-05": {"title": "Refactor creation and atomic best-effort Bet finalization", "status": "not_started"},
+    "BE-06": {"title": "Expose creation, progress and reasoning APIs", "status": "not_started"},
+    "BE-07": {"title": "Integrate worker startup and prove the backend handoff", "status": "not_started"}
+  }
+}

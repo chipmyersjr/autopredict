@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "plan": "progress/6_1_agent_strategy/backend/plan.md",
+  "progress_file": "ralph/agent-strategy-backend.progress.json",
+  "context": ["design/1_mvp.html", "design/3_game_info_ingress.html", "design/4_shared_strategies.html", "design/6_agent_strategy.html", "progress/6_1_agent_strategy/front_end/plan.md"],
+  "allowed_paths": ["backend/app/*", "backend/tests/*", "backend/pyproject.toml", "backend/uv.lock", "migrations/versions/*", "frontend/tests/support/*", "docker-compose.yml", "Makefile", ".env.example", "README.md"],
+  "protected_paths": ["backend/Dockerfile", "frontend/Dockerfile", ".dockerignore", "migrations/versions/0001_create_games_markets_and_selections.py", "migrations/versions/0002_create_strategies.py", "migrations/versions/0003_create_runs_bets.py", "migrations/versions/0004_add_ingress_persistence.py", "migrations/versions/0005_add_settlement_evidence.py"],
+  "environment": {"CFBD_API_KEY": "", "ODDS_API_KEY": "", "OLLAMA_API_KEY": "", "OLLAMA_HOST": "http://127.0.0.1:9", "OLLAMA_MODEL": "ralph-test-model", "ENV_FILE": ".env"},
+  "max_attempts": 3,
+  "task_timeout": 3600,
+  "instructions": "Implement only the selected Agent Strategy backend task against design 6 and its settled plan. Use native ollama for local inference and a provider-independent keyless DuckDuckGo adapter with explicit ddgs backend=duckduckgo. No LangGraph, hosted Ollama search, live model pulls, live searches or private keys are needed in this loop. Preserve ingress, Random behavior except the explicitly revised creation timing, shared Strategies, exact accounting, saved team/quote/settlement snapshots and durable creation replay. Keep research outside DB locks; use fenced durable execution and bounded per-game attempts. Test SDK/search interactions with injected fakes, not real services. Retire the decisions preview according to the plan; update affected regression tests to the new asynchronous Run contract rather than weakening or skipping them. BE-07 may edit Compose/Make for the durable worker, but do not add loop-specific Make targets or edit Ralph commands/configuration. Keep README concise. BE-07 must extend frontend/tests/support/live_backend.py with an opt-in --agent-worker argument: start the production worker against that helper's generated disposable database with controlled local model/search responses, report readiness only when API and worker are ready, and terminate all child services and drop the generated database on exit. Preserve existing fixture options and tests. Use test-only dependency injection or isolated stub services, never production score-writing endpoints or changes to development data. This fixture will be used by frontend FE-05; do not claim that future browser evidence passed during backend work. The loop's placeholder Ollama endpoint is deliberately unreachable; controlled tests must explicitly inject their own fake transports/fixture endpoints. Do not edit design, progress, runner/configuration or Git state; the runner records evidence and makes one local commit per task.",
+  "completion_note": "Automated verification uses disposable databases and controlled model/search responses. Actual local Ollama plus live DuckDuckGo verification is separate; no profitable-strategy claim or live-service verification is implied. Final cross-area browser proof belongs to FE-05.",
+  "checks": [
+    {"name": "Whitespace", "argv": ["git", "diff", "--check"], "timeout": 15},
+    {"name": "Start sandbox database", "argv": ["make", "db"], "timeout": 120},
+    {"name": "Build backend dependencies", "argv": ["docker", "compose", "build", "backend"], "timeout": 600},
+    {"name": "Backend regressions with disposable PostgreSQL databases", "argv": ["docker", "compose", "run", "--rm", "--no-deps", "--volume", "{repo}/backend/tests:/app/backend/tests:ro", "--volume", "{repo}/frontend/tests/support:/app/frontend/tests/support:ro", "--env", "RUN_POSTGRES_TESTS=1", "--env", "CFBD_API_KEY=", "--env", "ODDS_API_KEY=", "--env", "OLLAMA_API_KEY=", "--env", "OLLAMA_HOST=http://127.0.0.1:9", "--env", "OLLAMA_MODEL=ralph-test-model", "--env", "PYTHONDONTWRITEBYTECODE=1", "backend", "python", "-m", "pytest", "-p", "no:cacheprovider", "-q"], "timeout": 900}
+  ],
+  "tasks": [
+    {"id": "BE-01", "dependencies": []},
+    {"id": "BE-02", "dependencies": ["BE-01"]},
+    {"id": "BE-03", "dependencies": ["BE-02"]},
+    {"id": "BE-04", "dependencies": ["BE-01", "BE-03"]},
+    {"id": "BE-05", "dependencies": ["BE-04"]},
+    {"id": "BE-06", "dependencies": ["BE-05"]},
+    {"id": "BE-07", "dependencies": ["BE-01", "BE-02", "BE-03", "BE-04", "BE-05", "BE-06"]}
+  ]
+}

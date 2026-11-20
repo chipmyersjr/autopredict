@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "plan": "progress/6_1_agent_strategy/front_end/plan.md",
+  "area_status": "not_started",
+  "tasks": {
+    "FE-01": {"title": "Extend Run clients for Agent creation and persisted progress", "status": "not_started"},
+    "FE-02": {"title": "Replace preview and auto-selection with the guided creation flow", "status": "not_started"},
+    "FE-03": {"title": "Add real persisted execution progress and recovery", "status": "not_started"},
+    "FE-04": {"title": "Display saved Agent reasoning without changing financial history", "status": "not_started"},
+    "FE-05": {"title": "Prove the complete guided Random and Agent flows", "status": "not_started"}
+  }
+}

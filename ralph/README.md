@@ -71,6 +71,22 @@ Both plans and structured trackers remain separate; no combined copy of their re
 
 Baseline verification: the image/build and controlled browser suite pass. The live harness starts and cleans up its generated database, but existing pre-ingress live tests fail because their future fixture dates fall outside the current-week Games view and their expected game lists use unfiltered reads. BE-04 must prepare current-window-aware fixtures; FE-04 must update the live tests to the delivered current-window contract and add settlement acceptance. Do not hide these failures by skipping live tests or reverting the Games window behavior.
 
+## Agent Strategy: all backend tickets, then frontend
+
+```sh
+make ralph-preview RALPH_CONFIG=ralph/agent-strategy.json
+make ralph RALPH_CONFIG=ralph/agent-strategy.json
+make ralph RALPH_CONFIG=ralph/agent-strategy.json RALPH_ARGS="--resume"
+```
+
+One command runs BE-01–BE-07, then FE-01–FE-05 from `progress/6_1_agent_strategy/`. Each task gets independent checks, generated plan/progress updates and one local commit. A backend failure stops the sequence; resume skips completed phases and tasks. Commit setup changes first and launch in the sandbox. No additional Make targets are required.
+
+Backend checks build dependencies and run the full suite with disposable PostgreSQL databases. Backend scope permits the planned worker changes to Compose/Make and test-fixture support; old migrations and Ralph tooling stay protected. Model/search calls must be faked, provider keys are blank, and the test Ollama endpoint is intentionally unreachable. Actual local Ollama and DuckDuckGo verification remains a separate manual step.
+
+Frontend checks reuse the shared browser image/Compose overlay originally introduced for slice 4. FE-01–FE-04 run controlled browser tests. FE-05 also starts the guarded real API/worker fixture with `--live --backend-arg=--agent-worker`. BE-07 implements that opt-in fixture argument, including fake model/search responses, worker readiness, restart support and child-process/database cleanup. It must preserve the existing fixture interfaces. The browser-check wrapper forwards the option; it does not itself implement Agent predictions. Neither frontend checks nor loop setup require a real model, search key or live search.
+
+To run a single area/range, select `ralph/agent-strategy-backend.json` or `ralph/agent-strategy-frontend.json` with the usual arguments. Use the combined config for the full backend-before-frontend dependency order.
+
 ## Stop, inspect, resume
 
 The loop has three attempts and a one-hour wall limit per task per launch. Failed checks feed their logs to another fresh Codex session. Exhausted limits, blocked work, unexpected file/Git edits, failed commits, or Ctrl+C stop the loop without discarding changes. Inspect the files, then use `--resume` to grant another bounded attempt allowance.

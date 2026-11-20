@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "configs": [
+    "ralph/agent-strategy-backend.json",
+    "ralph/agent-strategy-frontend.json"
+  ]
+}

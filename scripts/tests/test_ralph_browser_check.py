@@ -26,13 +26,14 @@ class BrowserCheckTests(unittest.TestCase):
         server = MagicMock()
         server.poll.return_value = None
         def start(argv, **kwargs):
+            self.assertIn("--agent-worker", argv)
             metadata = Path(argv[argv.index("--metadata") + 1])
             metadata.write_text('{"database": "autopredict_browser_test"}')
             server.wait.side_effect = lambda **kw: metadata.unlink()
             return server
         ready = MagicMock()
         ready.__enter__.return_value.status = 200
-        with patch.object(sys, "argv", ["check", "--live"]), patch.object(check.signal, "signal"), \
+        with patch.object(sys, "argv", ["check", "--live", "--backend-arg=--agent-worker"]), patch.object(check.signal, "signal"), \
                 patch.object(check.subprocess, "run", side_effect=[None, subprocess.CalledProcessError(1, "npm test")]) as run, \
                 patch.object(check.subprocess, "Popen", side_effect=start), \
                 patch.object(check, "urlopen", return_value=ready):
@@ -41,3 +42,11 @@ class BrowserCheckTests(unittest.TestCase):
             server.terminate.assert_called_once()
             server.wait.assert_called_once()
             self.assertEqual(run.call_args.kwargs["env"]["LIVE_API"], "1")
+
+    def test_backend_arguments_require_live_mode(self):
+        with patch.object(sys, "argv", ["check", "--backend-arg=--agent-worker"]), \
+                patch.object(sys, "stderr"), patch.object(check.subprocess, "run") as run:
+            with self.assertRaises(SystemExit) as error:
+                check.main()
+            self.assertEqual(error.exception.code, 2)
+            run.assert_not_called()
