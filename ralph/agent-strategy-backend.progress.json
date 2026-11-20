@@ -67,7 +67,20 @@
     },
     "BE-04": {
       "title": "Build durable Run claims, progress and restart recovery",
-      "status": "not_started"
+      "status": "complete",
+      "summary": "Implemented durable worker claims, renewable leases, fencing, persisted attempts/predictions, restart recovery, progress snapshots, shutdown handling and --once execution. Added PostgreSQL recovery and concurrency tests. Syntax and whitespace checks passed; Docker socket permissions prevented running PostgreSQL tests locally. Runner-owned files and Git state were untouched.",
+      "checks": [
+        "Whitespace passed",
+        "Start sandbox database passed",
+        "Build backend dependencies passed",
+        "Backend regressions with disposable PostgreSQL databases passed"
+      ],
+      "files": [
+        "backend/app/run_worker.py",
+        "backend/tests/test_run_worker.py",
+        "progress/6_1_agent_strategy/backend/plan.md",
+        "ralph/agent-strategy-backend.progress.json"
+      ]
     },
     "BE-05": {
       "title": "Refactor creation and atomic best-effort Bet finalization",
